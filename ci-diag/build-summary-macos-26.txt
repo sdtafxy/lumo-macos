@@ -1,0 +1,56 @@
+run:      7
+commit:   1e73307cae35e6e0634d87acc8a0f86a52212b82
+runner:   macos-26   （macOS ARM64）
+system:   26.6.2
+xcode:    Xcode 26.6 Build version 17F113 
+job:      build（打包路径，唯一会编 App 目标的 job）
+date:     2026-09-13T14:05:11Z
+status:   success
+
+=== 各步骤结论 ===
+图标自检:  success
+设计文档:  success
+编译:      success
+打包:      success
+更新包zip: success
+版本号:    success
+
+=== 产物 ===
+-rw-r--r--@ 1 runner  staff   2.6M Sep 13 14:05 Lumo.dmg
+
+=== .app 结构 ===
+dist/Lumo.app
+dist/Lumo.app/Contents
+dist/Lumo.app/Contents/_CodeSignature
+dist/Lumo.app/Contents/_CodeSignature/CodeResources
+dist/Lumo.app/Contents/MacOS
+dist/Lumo.app/Contents/MacOS/Lumo
+dist/Lumo.app/Contents/Resources
+dist/Lumo.app/Contents/Resources/示例扫描件.pdf
+dist/Lumo.app/Contents/Resources/Lumo.icns
+dist/Lumo.app/Contents/Resources/Lumo-设计文档.pdf
+dist/Lumo.app/Contents/Info.plist
+dist/Lumo.app/Contents/PkgInfo
+
+=== 包内版本号（用户实际看到的）===
+0.0.1
+
+=== build-app.log（尾部 120 行）===
+[0/1] Planning build
+Building for production...
+[0/4] Write sources
+[1/4] Write swift-version-7974D3F7F03D5E95.txt
+[3/5] Compiling LumoApp Backend.swift
+[3/5] Write Objects.LinkFileList
+[4/5] Linking Lumo
+Build of product 'Lumo' complete! (20.25s)
+
+=== build-cli.log（尾部 120 行）===
+Building for production...
+[0/5] Write sources
+[2/5] Write swift-version-7974D3F7F03D5E95.txt
+[4/6] Compiling LumoCore Analyze.swift
+[5/7] Compiling lumo_cli main.swift
+[5/7] Write Objects.LinkFileList
+[6/7] Linking lumo-cli
+Build of product 'lumo-cli' complete! (41.97s)

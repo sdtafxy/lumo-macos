@@ -1,0 +1,241 @@
+run:      7
+commit:   1e73307cae35e6e0634d87acc8a0f86a52212b82
+runner:   macos-14   （macOS ARM64）
+system:   14.8.9
+job:      core-test
+date:     2026-09-13T14:05:38Z
+swift:    swift-driver version: 1.90.11.1 Apple Swift version 5.10 (swiftlang-5.10.0.13 clang-1500.3.9.4) Target: arm64-apple-macosx14.0 
+status:   success
+
+=== 各步骤结论 ===
+编译:        success
+自检:        success
+encoders:    success
+流水线:      success
+stripprobe:  success
+flipscan:    success
+图标自检:    success
+设计文档:    success
+对照图:      success
+
+=== 产物 ===
+-rw-r--r--  1 runner  wheel   771K Sep 13 14:04 /tmp/lumo-sample-out.pdf
+total 16840
+-rw-r--r--  1 runner  staff   115K Sep 13 14:05 auto-s00-产物回看.jpg
+-rw-r--r--  1 runner  staff   115K Sep 13 14:05 auto-s100-产物回看.jpg
+-rw-r--r--  1 runner  staff   115K Sep 13 14:05 auto-s35-产物回看.jpg
+-rw-r--r--  1 runner  staff   115K Sep 13 14:05 auto-s75-产物回看.jpg
+-rw-r--r--  1 runner  staff   119K Sep 13 14:05 bw-s00-产物回看.jpg
+-rw-r--r--  1 runner  staff   119K Sep 13 14:05 bw-s100-产物回看.jpg
+-rw-r--r--  1 runner  staff   119K Sep 13 14:05 bw-s35-产物回看.jpg
+-rw-r--r--  1 runner  staff   119K Sep 13 14:05 bw-s75-产物回看.jpg
+-rw-r--r--  1 runner  staff   254K Sep 13 14:05 lumo-auto-s00.pdf
+-rw-r--r--  1 runner  staff   234K Sep 13 14:05 lumo-auto-s100.pdf
+-rw-r--r--  1 runner  staff   232K Sep 13 14:05 lumo-auto-s35.pdf
+-rw-r--r--  1 runner  staff   232K Sep 13 14:05 lumo-auto-s75.pdf
+-rw-r--r--  1 runner  staff    56K Sep 13 14:05 lumo-bw-s00.pdf
+-rw-r--r--  1 runner  staff    56K Sep 13 14:05 lumo-bw-s100.pdf
+-rw-r--r--  1 runner  staff    56K Sep 13 14:05 lumo-bw-s35.pdf
+-rw-r--r--  1 runner  staff    56K Sep 13 14:05 lumo-bw-s75.pdf
+-rw-r--r--  1 runner  staff   243K Sep 13 14:05 p1-auto-s00.jpg
+-rw-r--r--  1 runner  staff   243K Sep 13 14:05 p1-auto-s100.jpg
+-rw-r--r--  1 runner  staff   243K Sep 13 14:05 p1-auto-s35.jpg
+
+=== 版本 ===
+lumo-cli 0.0.1
+
+=== 编译日志（尾部 200 行）===
+Building for production...
+[0/5] Write sources
+[2/5] Write swift-version-76B232A4806BA581.txt
+[4/6] Compiling LumoCore Analyze.swift
+[5/7] Compiling lumo_cli main.swift
+[5/7] Write Objects.LinkFileList
+[6/7] Linking lumo-cli
+Build complete! (29.22s)
+
+=== 自检日志（尾部 200 行）===
+IOServiceMatchingfailed for: AppleM2ScalerCSCDriver
+CoreGraphics PDF has logged an error. Set environment variable "CG_PDF_VERBOSE" to learn more.
+==> 生成合成扫描件
+  ✓ scan.pdf 575650 字节，3 页
+  ✓ 源文件体积合理（575650 字节）
+==> 体检
+  ✓ 页数=3 文字层=无 色彩=mono DPI=150 倾斜=-0.63° 噪声=0.000 背景不匀=0.000
+  ✓ 页数 = 3
+  ✓ 合成扫描件没有文字层（应当建议 OCR）
+  ✓ 检测到倾斜（-0.63°）
+  ✓ 三档方案都有体积预估
+==> 纠偏一致性（旋转 → 检测 → 回正）
+  ✓ 检测到 -2.50°，回正后残余 0.00°
+  ✓ 能检测出 2.5° 的倾斜
+  ✓ 回正后残余倾斜 < 0.5°（符号若反了这里必然失败）
+==> 完整处理（自适应 + OCR）
+  ✓ 575650 → 34352 字节（省 94.0%），OCR 1410 字符，用时 6.7s
+  ✓ 产物比源文件小
+  ✓ OCR 识别出文字（1410 字符）
+  ✓ 产物不是空壳
+  ✓ [balanced] 第 1 页 std=36.62 dark=0.0290
+  ✓ [balanced] 第 2 页 std=36.67 dark=0.0291
+  ✓ [balanced] 第 3 页 std=36.67 dark=0.0291
+  ✓ 第 1 页残余倾斜 < 0.6°（实测 0.00°）
+==> 单色 CCITT G4 路径
+  ✓ 575650 → 41847 字节（省 92.7%）
+    单色探针：打包黑点=0.0288 TIFF Photometric=1 TIFF往返黑点=0.0288 PDF渲染黑点=0.9712
+  ✓ [ccitt] 第 1 页 std=36.73 dark=0.0290
+  ✓ [ccitt] 第 2 页 std=36.79 dark=0.0292
+  ✓ [ccitt] 第 3 页 std=36.82 dark=0.0291
+==> JPEG2000 路径
+  ✓ 575650 → 353590 字节
+  ✓ [jp2] 第 1 页 std=34.44 dark=0.0274
+==> RGB 采样与像素格式
+  ✓ RGB 采样可用（ZIP 无损与墨色估计都靠它）
+  ✓ ZIP 真的走了 Flate（不是偷偷退回 JPEG）
+  ✓ 背景去除能出图（像素格式踩坑曾让它静默失效）
+  ✓ 对比度拉伸能出图
+  ✓ PDF 蒙版层生效（探针上色比例 0.25）
+==> Flate 与 /Predictor 交叉验证
+  · deflate 头部：78 9c ed cc（78 = RFC1950 头）
+  ✓ deflate 产出的是带头的 zlib 流（PDF 只认这种）
+  ✓ 裸 deflate 往返一致（89 字节）
+  · 对比度（>20 才算有内容）：无预测器 215 / Predictor 12(Up) 41 / Predictor 2(TIFF) 190
+  ✓ 无预测器的 Flate 图能正常显示（生产路径用的就是这种）
+==> ZIP 无损路径
+  ✓ 575650 → 494491 字节
+  ✓ [zip] 第 1 页 std=36.89 dark=0.0296
+  ✓ 单色 Flate：575650 → 28898 字节
+  ✓ [mono-zip] 第 1 页 std=36.73 dark=0.0290
+==> 可编辑文本 + OCR 中文
+  ✓ 中英文 OCR 有结果（469 字符）
+  ✓ 生成了 .txt 伴生文件
+  ✓ [editable] 第 1 页 std=40.98 dark=0.0362
+  ✓ 产物再体检一次要认出文字层
+==> 增强模式（自动 / 黑白 / 增强 / 对比度 / 原图）
+  ✓ 自动增强 之后页面仍有内容（对比度 105，墨水率 9.05%）
+  ✓ 黑白 之后页面仍有内容（对比度 0，墨水率 2.19%）
+  ✓ 增强 之后页面仍有内容（对比度 70，墨水率 2.42%）
+  ✓ 对比度 之后页面仍有内容（对比度 105，墨水率 9.05%）
+  ✓ 原图 之后页面仍有内容（对比度 64，墨水率 2.35%）
+  · 黑白：中间调 0.0% 墨水率 2.21%
+  · binaryMap：可用，墨水率 2.19%
+  · adaptiveBinarize：成功
+  ✓ 黑白档基本只剩纯黑白（中间调 0.0%）
+  ✓ 墨水率落在「有字但不糊」区间
+==> 分层压缩（MRC：低分辨率背景 + 1bit 文字蒙版）
+  ✓ photo.pdf 3483545 字节，2 页（模拟手机拍照扫描件）
+    该页体检：单色页=否 噪声=0.083 背景不匀=0.246
+  ✓ 单层 JPEG 2917777 字节 → 自适应 79042 字节（省 97.3%）
+  ✓ 自适应（含分层）比单层更省
+  ✓ [mrc] 第 1 页 std=25.93 dark=0.0144
+  ✓ [mrc] 第 2 页 std=25.93 dark=0.0144
+==> 页码范围
+  ✓ 2-3 页选中了 2 页
+==> 单页效果预览（App 里「先看再跑」用的就是它）
+  ✓ 原图预览 PNG 205843 字节
+  ✓ 增强后预览 PNG 23929 字节
+  ✓ 增强前后确实不同（否则预览等于没做）
+==> 含色页面不许被二值化（印章/图表要活下来）
+  ✓ 含红色块的页被判为彩色页（实际 color，JPEG）
+  ✓ 红块渲染回来还是红的（rgb=216,52,32）
+==> 背景清理：强度必须真的改变底灰，且彩色页要真的被判为需要清理
+  ✓ 均匀灰底页被判定为需要清理（纸白 234, 不匀 0.000）
+  ✓ 强度 0→1 纸白确实抬升（236 → 255）
+  ✓ 强度 1.0 时纸白接近纯白（255）
+  ✓ 清理后文字仍在（墨水率 0.46%）
+  ✓ 强度 0 时纸白基本不变（234 → 236）
+  ✓ 清理强度对灰阶页有效（纸白 249 → 255）
+  ✓ auto 档不会让灰底页更脏（234 → 255）
+  ✓ 偏黄纸被拉成中性白（R−B 差 0.0）
+==> 背景强度：判据不该成为滑块的门闩（L4 的守卫）
+  ✓ 干净页确实被判为干净（纸白 253）
+  ✓ 干净页上强度依然生效（纸白 253 → 255）
+  ✓ 干净页上两档强度的产出不再逐字节相同（L4 的正面守卫）
+  ✓ 干净页在任何强度下都不会被弄脏（最差纸白 247）
+  ✓ 干净页的判定与提示都随 applyReporting 返回
+  ✓ 脏页确实被判为需要清理
+  ✓ 脏页不会被误报成「已经够干净」
+  ✓ 「有没有强度这个概念」只认模式声明（usesBgStrength）
+==> 自动裁边：只在看得见桌面时才动手
+  ✓ 给出纸的四边形时确实执行了裁边（裁边：检出页面占比 46%，已裁到 1360×1768 并校正透视）
+  ✓ 裁后尺寸接近纸的实际大小（1360×1768，期望约 1360×1768）
+  ✓ 裁后四角是纸面、桌面已被切掉（最暗角均 254，原图约 90）
+  ✓ 裁边没有镜像画面：纸内左上角的标记裁完仍在左上（实测 左上（[11772, 0, 0, 0]））
+  ✓ 旋转页裁完贴边一圈没有残留桌面（暗像素 441/178532 = 0.25%，边圈均值 254；桌面约 85）
+  ✓ 闸门1（畸变）：自交四边形被拦下（裁边：检出的四边形畸变，已跳过（保持原样））
+  ✓ 闸门2（占比）：检出占比 97% 时跳过（裁边：页面已铺满整幅（占比 97%），无需裁切）
+  ✓ 闸门3（形状）：又窄又长的四边形被拦下（裁边：检出区域过于狭长，疑似误检，已跳过）
+  ✓ 闸门4（外侧亮）：满幅扫描页没被裁，且是被外侧判据拦下的（裁边：边界外侧依然是纸面（里 199 / 外 255），判定为满幅扫描页，已跳过）
+  ✓ 满幅页裁后尺寸不变（1600×2200）
+  ✓ 四边形给准时，纸几乎铺满也照裁（1840×2392，期望约 1840）
+  ✓ 闸门4（外侧亮）：同图同上，边界被低估时宁可不动手（裁边：边界外侧依然是纸面（里 195 / 外 254），判定为满幅扫描页，已跳过）
+  ✓ 没开自动裁边时不动画面（尺寸 2000×2600）
+  ✓ 裁边 + 纠偏同时开时，裁边确实先生效（2000 → 1360）
+  · 本系统的 Vision 文档分割：**检不出**合成件（macos-14 的模型就是这样，已记录在案）
+  ✓ 检不出边界时一个像素都不动（尺寸 2000×2600）
+  ✓ 并且给出了可读的原因，不是静默跳过（裁边：没检出页面边界，这一页保持原样）
+==> 二值化：把「为什么没用 Sauvola」这件事钉成断言
+  ✓ 光照渐变页两侧墨水率相当（亮侧 2.97% / 暗侧 2.97% = 1.00x）
+  ✓ 渐变页亮侧的笔画没被抹掉（亮侧墨水率 2.97%）
+  ✓ 均匀背景上的孤立噪点没被放大成黑斑（墨水率 0.000%，400 个噪点占 0.160%）
+==> 纸白判据：分位点会被大面积白块骗过去，均值这一支必须兜住
+  · 灰纸(230) + 25%白块(250)：分位点 251，真实均值 238
+  ✓ 分位点被大面积白块推高到 251（这正是单判据会漏判的原因）
+  ✓ 真实均值没被骗（238，应当低于 250）
+  ✓ 灰纸 + 白块被判为需要清理（分位点 251 / 均值 238）
+  · 灰纸(230) + 15%白块：分位点 235，真实均值 237
+  ✓ 15% 白块的灰纸同样判为需要清理
+==> PDF 字符串转义：控制字符不许写坏 Info 字典
+  ✓ 含控制字符标题的 PDF 页数正确
+  ✓ 标题读回来一字不差（写 21 字 / 读 21 字）
+  ✓ PDF 结构区（前 838 字节）没有裸控制字符（发现 0 个）
+  ✓ 普通标题读回来一字不差
+==> 流式写入：xref 偏移必须指向真实对象（页数一多就藏不住）
+  ✓ 流式写入返回了字节数（555619）
+  ✓ 落盘字节数与返回值一致（文件 555619 / 返回 555619）
+  ✓ startxref 指向 xref 表（554879 处是 xref）
+  ✓ 确实核对到了 xref 条目（32 个）
+  ✓ 每个 xref 条目都指向自己的对象（核对 32 个，错位 0 个）
+  ✓ 流式产物页数正确（6）
+==> 文字层 + MRC 同时开启（这对组合此前从未跑过）
+  · MRC 已生成：背景 18289 字节 + 蒙版 11909 字节
+  ✓ MRC + 文字层的 PDF 页数正确
+  ✓ MRC + 文字层渲染回来仍有内容（墨水率 3.27%）
+  ✓ 文字层真的写进去了（读回 88 个字符）
+==> CCITT 条带：多 strip 必须拼接而不是静默降级
+  ✓ 单色页走的确实是 CCITT G4（实际 CCITT G4）
+  · 条带实况：count=1 rowsPerStrip=1754 rows=1754
+  ✓ 拿到了条带信息（count=1）
+  ✓ 测试页本身有笔画可测（墨水率 0.0275）
+  ✓ CCITT 往返墨水率一致（0.0275 → 0.0279）
+==> 并发安全：多条流水线同时跑不许互相踩
+  ✓ 3 个并发任务全部成功（成功 3 个）
+  · 基准 27553 字节，并发 [27553, 27553, 27553] 字节
+  ✓ 并发结果与基准同量级（27553~27553 vs 27553）
+==> 方向探针（每一层都不能把画面镜像）
+基准输入：黑框在左上（[432, 0, 0, 0]）→ 正立 ✓
+  · resized(scale:0.5)：黑框在左上（[108, 0, 0, 0]）→ 正立 ✓
+  · GrayBitmap.from → toCGImage：黑框在左上（[432, 0, 0, 0]）→ 正立 ✓
+  · grayCGImage：黑框在左上（[432, 0, 0, 0]）→ 正立 ✓
+  · Enhance.rotated(0°)（纯重绘）：黑框在左上（[432, 0, 0, 0]）→ 正立 ✓
+—— 增强路径 ——
+  · 预设 bw（局部自适应二值化）：黑框在左上（[432, 0, 0, 0]）→ 正立 ✓
+  · 预设 auto（bgRemove 开）：黑框在左上（[432, 0, 0, 0]）→ 正立 ✓
+  · 预设 auto（bgRemove 关）：黑框在左上（[432, 0, 0, 0]）→ 正立 ✓
+  · 预设 color（增强）：黑框在左上（[432, 0, 0, 0]）→ 正立 ✓
+—— PDF 往返（写入 → 再渲染） ——
+    编码：mode=gray encoder=JPEG 1295 字节 note=-
+    PDFBASE64:JPEG 彩色:JVBERi0xLjcKJeLjz9MKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFs4IDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1Byb2R1Y2VyIChMdW1vIDAuMC4xKSAvVGl0bGUgKGZsaXBzY2FuKSAvQ3JlYXRpb25EYXRlIChEOjIwMjYwOTEzMTQwNDM1KSA+PgplbmRvYmoKNCAwIG9iago8PCAvVHlwZSAvRm9udCAvU3VidHlwZSAvVHlwZTAgL0Jhc2VGb250IC9MdW1vT0NSIC9FbmNvZGluZyAvSWRlbnRpdHktSCAvRGVzY2VuZGFudEZvbnRzIFs1IDAgUl0gL1RvVW5pY29kZSAxMiAwIFIgPj4KZW5kb2JqCjUgMCBvYmoKPDwgL1R5cGUgL0ZvbnQgL1N1YnR5cGUgL0NJREZvbnRUeXBlMiAvQmFzZUZvbnQgL0x1bW9PQ1IgL0NJRFN5c3RlbUluZm8gPDwgL1JlZ2lzdHJ5IChBZG9iZSkgL09yZGVyaW5nIChVQ1MpIC9TdXBwbGVtZW50IDAgPj4gL0ZvbnREZXNjcmlwdG9yIDYgMCBSIC9DSURUb0dJRE1hcCAvSWRlbnRpdHkgL0RXIDEwMDAgPj4KZW5kb2JqCjYgMCBvYmoKPDwgL1R5cGUgL0ZvbnREZXNjcmlwdG9yIC9Gb250TmFtZSAvTHVtb09DUiAvRmxhZ3MgNCAvRm9udEJCb3ggWzAgLTI1MCAxMDAwIDkwMF0gL0l0YWxpY0FuZ2xlIDAgL0FzY2VudCA4MDAgL0Rlc2NlbnQgLTI1MCAvQ2FwSGVpZ2h0IDcwMCAvU3RlbVYgODAgPj4KZW5kb2JqCjcgMCBvYmoKPDwgL0xlbmd0aCAwID4+CnN0cmVhbQoKZW5kc3RyZWFtCmVuZG9iago4IDAgb2JqCjw8IC9UeXBlIC9QYWdlIC9QYXJlbnQgMiAwIFIgL01lZGlhQm94IFswIDAgMTYwLjAwMCAxMjAuMDAwXSAvUmVzb3VyY2VzIDw8IC9YT2JqZWN0IDw8IC9JbTAgMTAgMCBSID4+IC9Gb250IDw8IC9GMSA0IDAgUiA+PiA+PiAvQ29u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YW1lIC9BZG9iZS1JZGVudGl0eS1VQ1MgZGVmCi9DTWFwVHlwZSAyIGRlZgoxIGJlZ2luY29kZXNwYWNlcmFuZ2UKPDAwMDA+IDxGRkZGPgplbmRjb2Rlc3BhY2VyYW5nZQoxIGJlZ2luYmZyYW5nZQo8MDAyMD4gPDAwMjA+IDwwMDIwPgplbmRiZnJhbmdlCmVuZGNtYXAKQ01hcE5hbWUgY3VycmVudGRpY3QgL0NNYXAgZGVmaW5lcmVzb3VyY2UgcG9wCmVuZAplbmQKCmVuZHN0cmVhbQplbmRvYmoKeHJlZgowIDEzCjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAxNSAwMDAwMCBuIAowMDAwMDAwMDY0IDAwMDAwIG4gCjAwMDAwMDAxMjEgMDAwMDAgbiAKMDAwMDAwMDIxNiAwMDAwMCBuIAowMDAwMDAwMzQ5IDAwMDAwIG4gCjAwMDAwMDA1NDcgMDAwMDAgbiAKMDAwMDAwMDcxMiAwMDAwMCBuIAowMDAwMDAwNzYxIDAwMDAwIG4gCjAwMDAwMDA5MjIgMDAwMDAgbiAKMDAwMDAwMTAxMSAwMDAwMCBuIAowMDAwMDAyNDc2IDAwMDAwIG4gCjAwMDAwMDI1MjYgMDAwMDAgbiAKdHJhaWxlcgo8PCAvU2l6ZSAxMyAvUm9vdCAxIDAgUiAvSW5mbyAzIDAgUiA+PgpzdGFydHhyZWYKMjkyNQolJUVPRgo=
+  · 写入(JPEG 彩色) → render：黑框在左上（[432, 0, 0, 0]）→ 正立 ✓
+    编码：mode=mono encoder=CCITT G4 32 字节 note=-
+    PDFBASE64:CCITT 单色:JVBERi0xLjcKJeLjz9MKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFs4IDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1Byb2R1Y2VyIChMdW1vIDAuMC4xKSAvVGl0bGUgKGZsaXBzY2FuKSAvQ3JlYXRpb25EYXRlIChEOjIwMjYwOTEzMTQwNDM1KSA+PgplbmRvYmoKNCAwIG9iago8PCAvVHlwZSAvRm9udCAvU3VidHlwZSAvVHlwZTAgL0Jhc2VGb250IC9MdW1vT0NSIC9FbmNvZGluZyAvSWRlbnRpdHktSCAvRGVzY2VuZGFudEZvbnRzIFs1IDAgUl0gL1RvVW5pY29kZSAxMiAwIFIgPj4KZW5kb2JqCjUgMCBvYmoKPDwgL1R5cGUgL0ZvbnQgL1N1YnR5cGUgL0NJREZvbnRUeXBlMiAvQmFzZUZvbnQgL0x1bW9PQ1IgL0NJRFN5c3RlbUluZm8gPDwgL1JlZ2lzdHJ5IChBZG9iZSkgL09yZGVyaW5nIChVQ1MpIC9TdXBwbGVtZW50IDAgPj4gL0ZvbnREZXNjcmlwdG9yIDYgMCBSIC9DSURUb0dJRE1hcCAvSWRlbnRpdHkgL0RXIDEwMDAgPj4KZW5kb2JqCjYgMCBvYmoKPDwgL1R5cGUgL0ZvbnREZXNjcmlwdG9yIC9Gb250TmFtZSAvTHVtb09DUiAvRmxhZ3MgNCAvRm9udEJCb3ggWzAgLTI1MCAxMDAwIDkwMF0gL0l0YWxpY0FuZ2xlIDAgL0FzY2VudCA4MDAgL0Rlc2NlbnQgLTI1MCAvQ2FwSGVpZ2h0IDcwMCAvU3RlbVYgODAgPj4KZW5kb2JqCjcgMCBvYmoKPDwgL0xlbmd0aCAwID4+CnN0cmVhbQoKZW5kc3RyZWFtCmVuZG9iago4IDAgb2JqCjw8IC9UeXBlIC9QYWdlIC9QYXJlbnQgMiAwIFIgL01lZGlhQm94IFswIDAgMTYwLjAwMCAxMjAuMDAwXSAvUmVzb3VyY2VzIDw8IC9YT2JqZWN0IDw8IC9JbTAgMTAgMCBSID4+IC9Gb250IDw8IC9GMSA0IDAgUiA+PiA+PiAvQ29udGVudHMgOSAwIFIgPj4KZW5kb2JqCjkgMCBvYmoKPDwgL0xlbmd0aCAzOSA+PgpzdHJlYW0KcQoxNjAuMDAwIDAgMCAxMjAuMDAwIDAgMCBjbQovSW0wIERvClEKCmVuZHN0cmVhbQplbmRvYmoKMTAgMCBvYmoKPDwgL1R5cGUgL1hPYmplY3QgL1N1YnR5cGUgL0ltYWdlIC9XaWR0aCAxNjAgL0hlaWdodCAxMjAgL0JpdHNQZXJDb21wb25lbnQgMSAvRmlsdGVyIC9DQ0lUVEZheERlY29kZSAvQ29sb3JTcGFjZSAvRGV2aWNlR3JheSAvRGVjb2RlUGFybXMgPDwgL0sgLTEgL0NvbHVtbnMgMTYwIC9Sb3dzIDEyMCAvQmxhY2tJczEgZmFsc2UgPj4gL0xlbmd0aCAzMiA+PgpzdHJlYW0K///JgC///yRH/////////j//8f////////////wAQAQKZW5kc3RyZWFtCmVuZG9iagoxMSAwIG9iago8PCAvTGVuZ3RoIDAgPj4Kc3RyZWFtCgplbmRzdHJlYW0KZW5kb2JqCjEyIDAgb2JqCjw8IC9MZW5ndGggMzQ3ID4+CnN0cmVhbQovQ0lESW5pdCAvUHJvY1NldCBmaW5kcmVzb3VyY2UgYmVnaW4KMTIgZGljdCBiZWdpbgpiZWdpbmNtYXAKL0NJRFN5c3RlbUluZm8gPDwgL1JlZ2lzdHJ5IChBZG9iZSkgL09yZGVyaW5nIChVQ1MpIC9TdXBwbGVtZW50IDAgPj4gZGVmCi9DTWFwTmFtZSAvQWRvYmUtSWRlbnRpdHktVUNTIGRlZgovQ01hcFR5cGUgMiBkZWYKMSBiZWdpbmNvZGVzcGFjZXJhbmdlCjwwMDAwPiA8RkZGRj4KZW5kY29kZXNwYWNlcmFuZ2UKMSBiZWdpbmJmcmFuZ2UKPDAwMjA+IDwwMDIwPiA8MDAyMD4KZW5kYmZyYW5nZQplbmRjbWFwCkNNYXBOYW1lIGN1cnJlbnRkaWN0IC9DTWFwIGRlZmluZXJlc291cmNlIHBvcAplbmQKZW5kCgplbmRzdHJlYW0KZW5kb2JqCnhyZWYKMCAxMwowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMTUgMDAwMDAgbiAKMDAwMDAwMDA2NCAwMDAwMCBuIAowMDAwMDAwMTIxIDAwMDAwIG4gCjAwMDAwMDAyMTYgMDAwMDAgbiAKMDAwMDAwMDM0OSAwMDAwMCBuIAowMDAwMDAwNTQ3IDAwMDAwIG4gCjAwMDAwMDA3MTIgMDAwMDAgbiAKMDAwMDAwMDc2MSAwMDAwMCBuIAowMDAwMDAwOTIyIDAwMDAwIG4gCjAwMDAwMDEwMTEgMDAwMDAgbiAKMDAwMDAwMTI4MCAwMDAwMCBuIAowMDAwMDAxMzMwIDAwMDAwIG4gCnRyYWlsZXIKPDwgL1NpemUgMTMgL1Jvb3QgMSAwIFIgL0luZm8gMyAwIFIgPj4Kc3RhcnR4cmVmCjE3MjkKJSVFT0YK
+  · 写入(CCITT 单色) → render：黑框在左上（[432, 0, 0, 0]）→ 正立 ✓
+    编码：mode=color encoder=ZIP 206 字节 note=-
+    PDFBASE64:ZIP 无损:JVBERi0xLjcKJeLjz9MKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFs4IDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1Byb2R1Y2VyIChMdW1vIDAuMC4xKSAvVGl0bGUgKGZsaXBzY2FuKSAvQ3JlYXRpb25EYXRlIChEOjIwMjYwOTEzMTQwNDM1KSA+PgplbmRvYmoKNCAwIG9iago8PCAvVHlwZSAvRm9udCAvU3VidHlwZSAvVHlwZTAgL0Jhc2VGb250IC9MdW1vT0NSIC9FbmNvZGluZyAvSWRlbnRpdHktSCAvRGVzY2VuZGFudEZvbnRzIFs1IDAgUl0gL1RvVW5pY29kZSAxMiAwIFIgPj4KZW5kb2JqCjUgMCBvYmoKPDwgL1R5cGUgL0ZvbnQgL1N1YnR5cGUgL0NJREZvbnRUeXBlMiAvQmFzZUZvbnQgL0x1bW9PQ1IgL0NJRFN5c3RlbUluZm8gPDwgL1JlZ2lzdHJ5IChBZG9iZSkgL09yZGVyaW5nIChVQ1MpIC9TdXBwbGVtZW50IDAgPj4gL0ZvbnREZXNjcmlwdG9yIDYgMCBSIC9DSURUb0dJRE1hcCAvSWRlbnRpdHkgL0RXIDEwMDAgPj4KZW5kb2JqCjYgMCBvYmoKPDwgL1R5cGUgL0ZvbnREZXNjcmlwdG9yIC9Gb250TmFtZSAvTHVtb09DUiAvRmxhZ3MgNCAvRm9udEJCb3ggWzAgLTI1MCAxMDAwIDkwMF0gL0l0YWxpY0FuZ2xlIDAgL0FzY2VudCA4MDAgL0Rlc2NlbnQgLTI1MCAvQ2FwSGVpZ2h0IDcwMCAvU3RlbVYgODAgPj4KZW5kb2JqCjcgMCBvYmoKPDwgL0xlbmd0aCAwID4+CnN0cmVhbQoKZW5kc3RyZWFtCmVuZG9iago4IDAgb2JqCjw8IC9UeXBlIC9QYWdlIC9QYXJlbnQgMiAwIFIgL01lZGlhQm94IFswIDAgMTYwLjAwMCAxMjAuMDAwXSAvUmVzb3VyY2VzIDw8IC9YT2JqZWN0IDw8IC9JbTAgMTAgMCBSID4+IC9Gb250IDw8IC9GMSA0IDAgUiA+PiA+PiAvQ29udGVudHMgOSAwIFIgPj4KZW5kb2JqCjkgMCBvYmoKPDwgL0xlbmd0aCAzOSA+PgpzdHJlYW0KcQoxNjAuMDAwIDAgMCAxMjAuMDAwIDAgMCBjbQovSW0wIERvClEKCmVuZHN0cmVhbQplbmRvYmoKMTAgMCBvYmoKPDwgL1R5cGUgL1hPYmplY3QgL1N1YnR5cGUgL0ltYWdlIC9XaWR0aCAxNjAgL0hlaWdodCAxMjAgL0JpdHNQZXJDb21wb25lbnQgOCAvRmlsdGVyIC9GbGF0ZURlY29kZSAvQ29sb3JTcGFjZSAvRGV2aWNlUkdCIC9MZW5ndGggMjA2ID4+CnN0cmVhbQp4nO3RsQ1CAQxDQfZf+jMAhSODEgnd9ZaL9zwAAAAAAAAAAPyb14+kH26kblPphxup21T64UbqNpV+uJG6TaUfbqRuU+mHG12pbsW+rlS3Yl9XqluxryvVrdjXlepW7OtKdSv2daW6Ffu6Ut2KfV2pbsW+rlS3Yl9XqluxryvVrdj3WaqTfriRuk2lH26kblPphxup21T64UbqNpV+uJG6TaUfAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA+NYbzRog5gplbmRzdHJlYW0KZW5kb2JqCjExIDAgb2JqCjw8IC9MZW5ndGggMCA+PgpzdHJlYW0KCmVuZHN0cmVhbQplbmRvYmoKMTIgMCBvYmoKPDwgL0xlbmd0aCAzNDcgPj4Kc3RyZWFtCi9DSURJbml0IC9Qcm9jU2V0IGZpbmRyZXNvdXJjZSBiZWdpbgoxMiBkaWN0IGJlZ2luCmJlZ2luY21hcAovQ0lEU3lzdGVtSW5mbyA8PCAvUmVnaXN0cnkgKEFkb2JlKSAvT3JkZXJpbmcgKFVDUykgL1N1cHBsZW1lbnQgMCA+PiBkZWYKL0NNYXBOYW1lIC9BZG9iZS1JZGVudGl0eS1VQ1MgZGVmCi9DTWFwVHlwZSAyIGRlZgoxIGJlZ2luY29kZXNwYWNlcmFuZ2UKPDAwMDA+IDxGRkZGPgplbmRjb2Rlc3BhY2VyYW5nZQoxIGJlZ2luYmZyYW5nZQo8MDAyMD4gPDAwMjA+IDwwMDIwPgplbmRiZnJhbmdlCmVuZGNtYXAKQ01hcE5hbWUgY3VycmVudGRpY3QgL0NNYXAgZGVmaW5lcmVzb3VyY2UgcG9wCmVuZAplbmQKCmVuZHN0cmVhbQplbmRvYmoKeHJlZgowIDEzCjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAxNSAwMDAwMCBuIAowMDAwMDAwMDY0IDAwMDAwIG4gCjAwMDAwMDAxMjEgMDAwMDAgbiAKMDAwMDAwMDIxNiAwMDAwMCBuIAowMDAwMDAwMzQ5IDAwMDAwIG4gCjAwMDAwMDA1NDcgMDAwMDAgbiAKMDAwMDAwMDcxMiAwMDAwMCBuIAowMDAwMDAwNzYxIDAwMDAwIG4gCjAwMDAwMDA5MjIgMDAwMDAgbiAKMDAwMDAwMTAxMSAwMDAwMCBuIAowMDAwMDAxMzg3IDAwMDAwIG4gCjAwMDAwMDE0MzcgMDAwMDAgbiAKdHJhaWxlcgo8PCAvU2l6ZSAxMyAvUm9vdCAxIDAgUiAvSW5mbyAzIDAgUiA+PgpzdGFydHhyZWYKMTgzNgolJUVPRgo=
+  · 写入(ZIP 无损) → render：黑框在左上（[432, 0, 0, 0]）→ 正立 ✓
+—— 落盘编码往返（App 预览用的就是这条路） ——
+  · PagePreview.png → 解码：黑框在左上（[432, 0, 0, 0]）→ 正立 ✓
+
+✓ 方向探针通过：所有环节都没有镜像画面
+
+  ✓ 断言数量足够多（本次共 95 条），没有哪一节被整段跳过
+✓ 自检通过（95 条断言全过，方向探针无镜像）
