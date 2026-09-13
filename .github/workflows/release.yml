@@ -9,7 +9,7 @@ jobs:
     runs-on: macos-14
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: 工具链
         run: swift --version
       # 依赖按「谁需要什么」分开装，不要一把梭。
@@ -74,7 +74,7 @@ jobs:
           hdiutil create -format UDZO -volname "Lumo" -srcfolder dmgstage -o Lumo-unsigned.dmg
           mv Lumo-unsigned.dmg Lumo.dmg
           ls -lh Lumo.dmg
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         id: publish
         with:
           # dmg 给首次安装的人；zip + .sha256 给更新器。
