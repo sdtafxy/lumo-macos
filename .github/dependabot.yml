@@ -1,0 +1,16 @@
+# 让 Dependabot 盯着 GitHub Actions 的版本。
+#
+# 为什么只配这一个生态：这个项目的**运行时代码零第三方依赖**（只用系统框架），
+# 所以没有 npm / pip / SPM 的依赖需要更新。但 `.github/workflows/` 里
+# 用了一堆 `actions/*` 与第三方 action，它们的版本会过期，
+# 而过期的 action 是供应链攻击的常见入口。
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "build"
+    labels:
+      - "dependencies"

@@ -1,0 +1,178 @@
+name: Release
+on:
+  push:
+    tags: [ 'v*' ]
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: 工具链
+        run: swift --version
+      # 依赖按「谁需要什么」分开装，不要一把梭。
+      # 这里踩过一次：原先只有一条 `pip install pillow weasyprint pypdf`，
+      # 而 weasyprint 在 macOS runner 上要拉 cairo / pango 一整套系统库，
+      # 比较脆。它一失败，整条命令失败，**连 pillow 和 pypdf 也没装上**——
+      # 结果图标自检和设计文档断言跟着一起挂，报出来的现象（DMG 步骤被跳过）
+      # 跟真正的原因（一个用不上的依赖装不上）差了十万八千里。
+      # 现在：图标只要 pillow；一致性断言只要 pypdf（它**不**需要 weasyprint，
+      # 因为比对的是已提交的 PDF，不是重新生成）；weasyprint 只在
+      # 「真的要重新生成 PDF」时才需要，那条路径单独装、单独报错。
+      - name: 安装图标脚本依赖（只要 pillow）
+        id: depicon
+        run: |
+          python3 -m pip install --quiet --user pillow \
+            || python3 -m pip install --break-system-packages --quiet pillow
+      - name: 安装文档断言依赖（只要 pypdf）
+        id: depdoc
+        run: |
+          python3 -m pip install --quiet --user pypdf \
+            || python3 -m pip install --break-system-packages --quiet pypdf
+      # 图标与设计文档在发版时**无条件重新生成**，不再判断「文件在不在」。
+      # 发出去的包是要给用户看的，图标和文档必须来自当前这份代码，
+      # 而不是仓库里可能已经陈旧的那份产物。
+      - name: 重新生成图标并自检
+        id: icon
+        run: |
+          python3 Scripts/make_icon.py
+          python3 Scripts/make_icon.py --verify
+      - name: 设计文档与内置 PDF 必须一致
+        id: designdoc
+        run: python3 Scripts/check_design_doc.py
+      - name: 编译
+        id: compile
+        run: swift build -c release
+      - name: 核心自检（发布前最后一关）
+        id: selftest
+        run: "$(swift build -c release --show-bin-path)/lumo-cli selftest"
+      - name: 打包
+        id: pack
+        run: bash Scripts/build.sh
+      # 更新器只认 zip（dmg 要挂载、要弹出，中途失败会留半个状态）。
+      # Release 里**两个都要留**：dmg 给首次安装的人，zip 给更新器。
+      # 这条同时会产出 .sha256；配了 LUMO_UPDATE_SIGNING_KEY 还会产出 .ed25519。
+      - name: 打更新包（zip + sha256 [+ ed25519]）
+        id: zip
+        env:
+          # 私钥只从 secret 来，绝不进仓库（手册 §4 纪律二）。
+          # 没配这个 secret 时脚本会**明说"未签名"**，不会静默跳过。
+          LUMO_UPDATE_SIGNING_KEY: ${{ secrets.LUMO_UPDATE_SIGNING_KEY }}
+        run: |
+          set -o pipefail
+          bash Scripts/make_zip.sh 2>&1 | tee /tmp/makezip.log
+      - name: DMG
+        id: dmg
+        run: |
+          for d in dmgstage Lumo.dmg Lumo-unsigned.dmg; do
+            [ -e "$d" ] && mv "$d" "/tmp/stale-$$-$d" || true
+          done
+          mkdir -p dmgstage
+          cp -R dist/Lumo.app dmgstage/
+          hdiutil create -format UDZO -volname "Lumo" -srcfolder dmgstage -o Lumo-unsigned.dmg
+          mv Lumo-unsigned.dmg Lumo.dmg
+          ls -lh Lumo.dmg
+      - uses: softprops/action-gh-release@v2
+        id: publish
+        with:
+          # dmg 给首次安装的人；zip + .sha256 给更新器。
+          # .ed25519 用 glob 带上，没签名时它不存在，action 会自动忽略。
+          files: |
+            Lumo.dmg
+            dist/Lumo-*.zip
+            dist/Lumo-*.zip.sha256
+            dist/Lumo-*.zip.ed25519
+          generate_release_notes: true
+      # 发版结果也要留一份能穿过防火墙取回的证据。
+      # 沙箱里访问不到 Actions 的运行日志（没有 token，私有仓库未认证一律 404），
+      # 也下载不到 artifact（TLS 被掐）。demo 分支是唯一验得回来的通道——
+      # CI 那条用的是同一个办法，这里把 DMG 的实际字节数也带上，
+      # 免得"发版成功"只是我的一厢情愿。
+      - name: 发版结果写回 demo 分支
+        if: always()
+        run: |
+          APP="dist/Lumo.app/Contents"
+          mkdir -p ci-diag
+          {
+            echo "=== 发版 ${GITHUB_REF_NAME} ==="
+            echo "date:      $(date -u +%FT%TZ)"
+            echo "status:    ${{ job.status }}"
+            echo "tag:       ${GITHUB_REF_NAME}"
+            echo "commit:    ${GITHUB_SHA}"
+            echo
+            echo "--- 各步骤结论（失败时靠这段定位是哪一步挂的）---"
+            echo "装图标依赖:   ${{ steps.depicon.outcome }}"
+            echo "装文档依赖:   ${{ steps.depdoc.outcome }}"
+            echo "图标自检:     ${{ steps.icon.outcome }}"
+            echo "设计文档:     ${{ steps.designdoc.outcome }}"
+            echo "编译:         ${{ steps.compile.outcome }}"
+            echo "自检:         ${{ steps.selftest.outcome }}"
+            echo "打包:         ${{ steps.pack.outcome }}"
+            echo "更新包zip:    ${{ steps.zip.outcome }}"
+            echo "DMG:          ${{ steps.dmg.outcome }}"
+            echo "发布:         ${{ steps.publish.outcome }}"
+            echo
+            echo "--- DMG ---"
+            ls -lh Lumo.dmg 2>&1 || true
+            shasum -a 256 Lumo.dmg 2>&1 || true
+            echo
+            echo "--- 更新包（更新器真正会下载的东西）---"
+            ls -lh dist/Lumo-*.zip dist/Lumo-*.zip.sha256 dist/Lumo-*.zip.ed25519 2>&1 || true
+            cat dist/Lumo-*.zip.sha256 2>&1 || true
+            if [ -f /tmp/makezip.log ]; then
+              echo
+              echo "--- make_zip 日志尾部 ---"
+              tail -30 /tmp/makezip.log
+            fi
+            echo
+            echo "--- 包内版本号（这是用户实际看到的那一个）---"
+            if [ -f "$APP/Info.plist" ]; then
+              /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Info.plist" 2>&1 || true
+              /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$APP/Info.plist" 2>&1 || true
+            else
+              echo "找不到 Info.plist"
+            fi
+            echo
+            echo "--- app 结构 ---"
+            find dist/Lumo.app -maxdepth 3 2>&1 | head -30 || true
+          } > ci-diag/release-summary.txt 2>&1
+          cat ci-diag/release-summary.txt
+          git config user.name "lumo-bot"
+          git config user.email "lumo-bot@users.noreply.github.com"
+          # 用 orphan 分支重建，再单独把 CI 已经写上去的 summary.txt 捞回来。
+          #
+          # 为什么要多这一步：CI 和 release 都用 checkout -B 从**各自的 commit**
+          # 重建 demo 分支，历史没有任何共同祖先，只能强推。谁后跑谁就把对方
+          # 写的内容整个抹掉——发版之后，CI 的 summary.txt 就消失了。
+          # 两个工作流抢同一块地方，迟早会互相踩，所以这里显式取回对方的文件。
+          git fetch origin demo --depth=1 2>/dev/null || echo "（远端还没有 demo 分支，跳过）"
+          git checkout --orphan demo
+          git rm -rf --cached . >/dev/null 2>&1 || true
+          # 抢救 CI 的几分 summary：从 FETCH_HEAD 里逐个取回来。
+          # 现在是**四个**写入方共用 demo 分支（build×2 个系统 / core-test×2 / release），
+          # 各自强推、互无祖先，所以每个写入方都得负责把别人的文件捞回来。
+          mkdir -p ci-diag
+          for f in summary-macos-14.txt summary-macos-26.txt \
+                   build-summary-macos-14.txt build-summary-macos-26.txt \
+                   summary.txt build-summary.txt; do
+            if git cat-file -e "FETCH_HEAD:ci-diag/$f" 2>/dev/null; then
+              git show "FETCH_HEAD:ci-diag/$f" > "ci-diag/$f"
+              echo "已保留 ci-diag/$f（$(wc -c < "ci-diag/$f") 字节）"
+            fi
+          done
+          # 发版历史也留一份，方便日后对账
+          if git cat-file -e FETCH_HEAD:ci-diag/release-history.txt 2>/dev/null; then
+            git show FETCH_HEAD:ci-diag/release-history.txt >> ci-diag/release-history.new 2>/dev/null || true
+          fi
+          {
+            echo "--- ${GITHUB_REF_NAME}  $(date -u +%FT%TZ)  status=${{ job.status }} ---"
+            ls -lh Lumo.dmg 2>&1 | tail -1
+            shasum -a 256 Lumo.dmg 2>&1 | awk '{print $1}'
+          } >> ci-diag/release-history.new
+          mv -f ci-diag/release-history.new ci-diag/release-history.txt
+          git add -f ci-diag
+          git commit -m "release: ${GITHUB_REF_NAME} （run ${GITHUB_RUN_NUMBER}）"
+          # 必须强推：这是每次重建的孤儿分支，跟远端没有共同祖先。
+          git push -f origin demo

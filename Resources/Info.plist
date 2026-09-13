@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key>
+	<string>Lumo</string>
+	<key>CFBundleDisplayName</key>
+	<string>Lumo</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.lumo.app</string>
+	<key>CFBundleExecutable</key>
+	<string>Lumo</string>
+	<key>CFBundleIconFile</key>
+	<string>Lumo</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>13.0</string>
+	<!-- 本地化：**不声明中文的话，标准菜单会显示成 File / Edit / Window / Help**，
+	     而我们的自定义菜单项是中文的，两下一混就成了「File → 打开…」这种半中半西。
+	     实测发现的（本机系统语言是中文，但 App 菜单栏是英文）。
+	     这里只声明"支持哪些语言"，不需要 .lproj 资源——标准菜单的文案由系统提供。 -->
+	<key>CFBundleDevelopmentRegion</key>
+	<string>zh_CN</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>zh-Hans</string>
+		<string>zh_CN</string>
+		<string>en</string>
+	</array>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSSupportsAutomaticTermination</key>
+	<true/>
+	<key>NSSupportsSuddenTermination</key>
+	<false/>
+
+	<!-- ===== 自动更新配置 =====
+	     刻意放在 Info.plist 而不是代码里（手册 §2）：
+	     fork 的人要能改成自己的仓库地址与公钥，不该为了这个去改源码。 -->
+
+	<!-- 更新源。形如 owner/repo。**必须是公开仓库**：
+	     私有仓库的 /releases/latest 对匿名请求一律返回 404，
+	     客户端拿不到发布信息（这一点在设置页会如实报出来，不会假装"已是最新"）。
+
+	     fork 之后要发自己的更新，就把这里改成自己的公开仓库。 -->
+	<key>LumoUpdateRepository</key>
+	<string>sdtafxy/lumo-macos</string>
+
+	<!-- Ed25519 公钥（base64 或 hex，32 字节）。
+	     留空 = 只校验 SHA-256。**留空不是"忘了填"，是一个明确的强度选择**：
+	     SHA-256 是完整性检查、不是来源检查，它能挡传输损坏，挡不住有人换包。
+	     填上公钥后客户端会**强制验签**，缺少签名文件直接拒绝安装、绝不降级。
+	     生成密钥对与签名：
+	       swiftc -O Scripts/sign_update.swift -o /tmp/sign_update && /tmp/sign_update generate -->
+	<key>LumoUpdatePublicKey</key>
+	<string></string>
+
+	<!-- 更新包资产的扩展名。dmg 给首次安装的人，zip 给更新器。 -->
+	<key>LumoUpdateAssetSuffix</key>
+	<string>.zip</string>
+	<!-- 这里原本有一条 NSAppTransportSecurity / NSAllowsLocalNetworking，
+	     理由是「引擎是本机 127.0.0.1 的 Python 服务」。那个架构在 0.3.0
+	     就换掉了：核心算法现在是原生 Swift（CoreGraphics / Core Image /
+	     Vision / ImageIO），进程内调用，没有任何 HTTP。
+	     留着这条放行规则等于给一个不存在的服务开了一个口子，所以删掉。
+	     （build.sh 会把 Resources/VERSION 注入到 CFBundleShortVersionString，
+	     所以下面这个 0.1.0 只是占位，不必跟着版本改。） -->
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>PDF Document</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.adobe.pdf</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>
