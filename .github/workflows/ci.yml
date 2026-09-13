@@ -34,7 +34,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: 工具链
         run: |
           sw_vers
@@ -250,7 +250,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: 工具链
         run: swift --version
       - name: 编译 CLI
