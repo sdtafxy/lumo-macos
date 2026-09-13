@@ -10,6 +10,16 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    # 首次接入时 Dependabot 会**立刻**跑一次（不看 schedule），一次开出好几个 PR。
+    #
+    # 所以下面两条是刻意的：`groups` 把一批更新合成**一个** PR；
+    # 上限设成 1，是因为仓库首页挂着一排机器人 PR 既没信息量，
+    # 又容易被顺手合掉——而 action 的**大版本**升级是可能把 CI 弄坏的。
+    # 宁可一个月看一次，也不要一次看十条。
+    open-pull-requests-limit: 1
+    groups:
+      actions:
+        patterns: ["*"]
     commit-message:
       prefix: "build"
     labels:
