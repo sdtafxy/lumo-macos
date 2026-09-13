@@ -34,7 +34,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: 工具链
         run: |
           sw_vers
@@ -135,7 +135,7 @@ jobs:
           done
           echo "内置文档就位："
           ls -lh dist/Lumo.app/Contents/Resources/*.pdf
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: Lumo-${{ matrix.os }}
           path: Lumo.dmg
@@ -250,7 +250,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: 工具链
         run: swift --version
       - name: 编译 CLI
@@ -450,7 +450,7 @@ jobs:
           }
           push_demo
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: lumo-demo-auto-${{ matrix.os }}
           path: demo-out
