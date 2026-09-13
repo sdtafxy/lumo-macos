@@ -135,7 +135,7 @@ jobs:
           done
           echo "内置文档就位："
           ls -lh dist/Lumo.app/Contents/Resources/*.pdf
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: Lumo-${{ matrix.os }}
           path: Lumo.dmg
@@ -450,7 +450,7 @@ jobs:
           }
           push_demo
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: lumo-demo-auto-${{ matrix.os }}
           path: demo-out
