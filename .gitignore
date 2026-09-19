@@ -1,0 +1,23 @@
+# Build artifacts
+.build/
+build/
+dist/
+*.xcodeproj/
+xcuserdata/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# DMG / 临时
+dmgstage/
+*.dmg
+
+# macOS
+.DS_Store
+# demo 对照图：CI 每次重跑都会覆盖重建，不入库（9.6MB 的可再生产物）
+demo-out/
+.update-key

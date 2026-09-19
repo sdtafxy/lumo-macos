@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 安全漏洞
+    url: https://github.com/sdtafxy/lumo-macos/security/advisories/new
+    about: 请勿用公开 issue 报告安全问题，走这个私密通道。
+  - name: 使用问题 / 讨论
+    url: https://github.com/sdtafxy/lumo-macos/discussions
+    about: 「怎么用」类的问题放这里，不走 issue。

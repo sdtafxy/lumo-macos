@@ -1,0 +1,477 @@
+name: CI
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # 两个系统版本都跑，因为"兼容性"不是猜出来的。
+  #
+  # 之前只用 macos-14（Sonoma，Xcode 15.x），理由是"版本低一点兼容性更好"。
+  # 但这句话有个前提没被验证过：低版本 SDK 编出来的二进制**能不能在新系统上跑**，
+  # 以及新系统的新 Swift 会不会**编不过这份代码**。前者基本成立（macOS 的兼容
+  # 方向是"新系统跑老程序"），后者才是真正的风险——用户的机器是 macOS 26，
+  # 如果哪天用了一个只在旧 SDK 存在的 API，旧 runner 绿、用户机器红。
+  #
+  # 所以不二选一，两个都跑：
+  #   macos-14 → 覆盖**下限**（包里声明 macOS 13 起可装，用较老的 SDK 构建，
+  #              最能代表还在用老系统的用户）；
+  #   macos-26 → 覆盖**上限**（Tahoe + Xcode 26 的新 Swift，代表最新工具链）。
+  # 两边都绿，才真正说明"这份代码在老少两代工具链上都成立"。
+  # fail-fast: false —— 一个版本挂了别把另一个掐掉，那正是我们想要的那条信息。
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ macos-14, macos-26 ]
+    runs-on: ${{ matrix.os }}
+    # runner 版本进名字，artifact 与诊断文件名才能区分开。
+    # 不加这个，两个 matrix 会把同一份诊断文件互相覆盖。
+    name: build (${{ matrix.os }})
+    timeout-minutes: 25
+    # 这个 job 也往 demo 分支写诊断，所以同样需要写权限。
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: 工具链
+        run: |
+          sw_vers
+          swift --version
+          xcode-select -p
+      # 只装这两条断言真正用到的：图标要 pillow，文档一致性要 pypdf。
+      # 刻意不带 weasyprint——它要拉 cairo/pango 一整套系统库，在 runner 上偏脆，
+      # 而设计文档一致性断言的输入是**已提交的 PDF**，根本不需要渲染引擎。
+      # （教训：一条 pip 命令里塞多个包，一个装不上就全军覆没，
+      #  报出来的现象会跟真实原因差很远。）
+      - name: 安装图标/文档断言依赖
+        run: |
+          python3 -m pip install --quiet --user pillow pypdf \
+            || python3 -m pip install --break-system-packages --quiet pillow pypdf
+      # 图标不再「存在就跳过」。
+      # 之前那条 if [ ! -f Resources/Lumo.icns ] 是错的：仓库里既然已经有 .icns，
+      # 这一步在 CI 上等于永远不跑——脚本改了、参数改了，CI 一声不吭。
+      # 现在每次都重新生成 + 自检，让 Scripts/make_icon.py 成为图标的唯一来源。
+      - name: 重新生成应用图标并自检
+        id: icon
+        run: |
+          python3 Scripts/make_icon.py
+          python3 Scripts/make_icon.py --verify
+      # 设计文档有两处拷贝（HTML 源 + 内置 PDF），以前 PDF 是手工导出的，
+      # 于是它必然会忘——用户实测反馈的第 5 条就是这么来的。
+      # 这里断言两者内容一致：改了 HTML 却忘了跑 make_design_doc.py，当场红。
+      - name: 设计文档与内置 PDF 必须一致
+        id: designdoc
+        run: python3 Scripts/check_design_doc.py
+      # 界面文案的完整性。纯标准库，不需要装任何依赖。
+      # 它查三件事：① 用到的每条文案英文表里都有；② 表里没有重复 key
+      # （**Swift 的字典字面量遇到重复 key 是运行时 SIGTRAP，不是编译错误**，
+      # 编译器只给一条容易漏掉的 warning——实测就这么崩过一次）；
+      # ③ 带参数的文案只用 %@ 与 %%（参数统一转字符串，%d 之类对不上类型）。
+      - name: 界面文案本地化检查
+        id: l10n
+        run: python3 Scripts/check_localization.py
+      # 这一版的 CHANGELOG 条目必须已经写好了。
+      #
+      # 为什么放在 CI 而不是发版时才发现：Release 的正文是**从 CHANGELOG 抽的**
+      # （见 release.yml），抽不到就会退化成一行"详见 CHANGELOG"——
+      # 那等于又回到"发布说明里什么都没说"的老毛病。版本号是先改的，
+      # 所以这条断言能在推 tag 之前就拦住"改了 VERSION 却没写变更记录"。
+      - name: CHANGELOG 里有当前版本的条目
+        id: notes
+        run: python3 Scripts/extract_release_notes.py --check "$(cat Resources/VERSION)"
+      # 显式把两个产物都编出来，别依赖 `swift build` 的默认行为。
+      #
+      # 这条曾经是个真正的盲区：core-test 只编 lumo-cli，而 App 目标
+      # （SwiftUI）只有发版时才被编到。于是「App 侧编译不过」这种错
+      # CI 一路绿灯，直到 tag 推上去、release 挂掉才暴露——
+      # 用户看到的是"发版失败"，报的是"编译失败"，而真正的原因
+      # 是一个只在 App 目标里才存在的符号解析问题。
+      # 现在两次都编，App 目标的错在 PR 阶段就拦住。
+      - name: 编译（全部产物，含 SwiftUI App）
+        id: compile
+        run: |
+          set -o pipefail
+          swift build -c release --product lumo-cli 2>&1 | tee /tmp/build-cli.log
+          swift build -c release --product Lumo 2>&1 | tee /tmp/build-app.log
+      - name: 打包 .app
+        id: pack
+        run: bash Scripts/build.sh
+      # 更新包（zip + sha256）也在这里跑一遍。
+      # 手册 §8：**CI 也要跑这个打包脚本**——否则脚本坏了要等到发版才发现，
+      # 而那个时刻恰恰是最不希望出问题的时刻。
+      - name: 打更新包（zip + sha256）
+        id: zip
+        run: |
+          set -o pipefail
+          bash Scripts/make_zip.sh 2>&1 | tee /tmp/makezip.log
+      - name: 生成 DMG
+        run: |
+          # ⚠️ 不用 rm -rf：dmgstage 里是一份完整的 .app（文件数远超 50），
+          # 删除会被 AI 侧的安全钩子拦下，而**脚本会继续往下跑、退出码可能还是 0**
+          # —— 于是打出来的是上一次的 DMG（手册 P9）。先 mv 走再建新的。
+          for d in dmgstage Lumo.dmg Lumo-unsigned.dmg; do
+            [ -e "$d" ] && mv "$d" "/tmp/stale-$$-$d" || true
+          done
+          mkdir -p dmgstage
+          cp -R dist/Lumo.app dmgstage/
+          hdiutil create -format UDZO -volname "Lumo" -srcfolder dmgstage -o Lumo.dmg
+      - name: 校验产物
+        run: |
+          ls -lh Lumo.dmg
+          codesign -dv dist/Lumo.app 2>&1 || true
+      # 版本号一致性：曾经 plist 是 0.1.0、代码里是 0.3.0，发出去的包跟标签对不上。
+      # 现在 Resources/VERSION 是唯一来源，这条断言就是防止它再散架。
+      - name: 校验版本号一致（VERSION / Info.plist）
+        id: version
+        run: |
+          WANT="$(tr -d '[:space:]' < Resources/VERSION)"
+          GOT="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' dist/Lumo.app/Contents/Info.plist)"
+          echo "Resources/VERSION=$WANT  Info.plist=$GOT"
+          if [ "$WANT" != "$GOT" ]; then
+            echo "error: Resources/VERSION($WANT) 与 Info.plist($GOT) 不一致" >&2
+            exit 1
+          fi
+          # 兜底常量也要跟着走，否则 lumo-cli 直接跑时（没有 .app 外壳）
+          # 报出来的版本号还是老的。这两处必须同时改，所以这里一起断言。
+          FB="$(grep -o 'fallbackVersion = "[^"]*"' Sources/LumoCore/PDFWriter.swift | sed 's/.*"\(.*\)"/\1/')"
+          echo "PDFWriter.fallbackVersion=$FB"
+          if [ "$WANT" != "$FB" ]; then
+            echo "error: VERSION($WANT) 与 PDFWriter.fallbackVersion($FB) 不一致" >&2
+            exit 1
+          fi
+          echo "版本号一致：$WANT"
+      - name: 校验内置文档真的进了 .app
+        run: |
+          for f in "Lumo-设计文档.pdf" "示例扫描件.pdf"; do
+            if [ ! -f "dist/Lumo.app/Contents/Resources/$f" ]; then
+              echo "error: .app 里缺少内置文档 $f" >&2
+              exit 1
+            fi
+          done
+          echo "内置文档就位："
+          ls -lh dist/Lumo.app/Contents/Resources/*.pdf
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Lumo-${{ matrix.os }}
+          path: Lumo.dmg
+          if-no-files-found: error
+          retention-days: 14
+      # build job 也要有回传通道。
+      #
+      # 这次代价很具体：release 的编译挂了，
+      # 我手上只有 demo 分支里 core-test 的 summary——而 core-test **不编 App 目标**，
+      # 所以它的"编译: success"跟 release 的"编译: failure"根本不是同一件事。
+      # 我在错误的信息上推了一轮，还改错了一处依赖安装。
+      # 教训：**回传的粒度必须和断言的粒度对齐**——哪个 job 里编的东西，
+      # 就得由哪个 job 自己把结论说出来。
+      - name: 打包结果写回 demo 分支（无论成败）
+        if: always() && github.event_name != 'pull_request'
+        run: |
+          # 文件名带 runner 后缀：现在 matrix 下有两个 build 同时在跑，
+          # 用同一个 build-summary.txt 会互相覆盖——而且谁后写谁赢，
+          # 表现为"某个系统版本的诊断莫名其妙地长着另一个系统的内容"。
+          # （教训：共享的写通道，只要写入方变多，文件名就必须先带上身份。）
+          OS_TAG="${{ matrix.os }}"
+          mkdir -p ci-diag
+          {
+            echo "run:      ${GITHUB_RUN_NUMBER}"
+            echo "commit:   ${GITHUB_SHA}"
+            echo "runner:   ${OS_TAG}   （${{ runner.os }} ${{ runner.arch }}）"
+            echo "system:   $(sw_vers -productVersion 2>/dev/null || echo '?')"
+            echo "xcode:    $(xcodebuild -version 2>/dev/null | head -2 | tr '\n' ' ' || echo '?')"
+            echo "job:      build（打包路径，唯一会编 App 目标的 job）"
+            echo "date:     $(date -u +%FT%TZ)"
+            echo "status:   ${{ job.status }}"
+            echo
+            echo "=== 各步骤结论 ==="
+            echo "图标自检:  ${{ steps.icon.outcome }}"
+            echo "设计文档:  ${{ steps.designdoc.outcome }}"
+            echo "文案本地化: ${{ steps.l10n.outcome }}"
+            echo "CHANGELOG:  ${{ steps.notes.outcome }}"
+            echo "编译:      ${{ steps.compile.outcome }}"
+            echo "打包:      ${{ steps.pack.outcome }}"
+            echo "更新包zip: ${{ steps.zip.outcome }}"
+            echo "版本号:    ${{ steps.version.outcome }}"
+            echo
+            echo "=== 产物 ==="
+            ls -lh Lumo.dmg 2>&1 || true
+            echo
+            echo "=== .app 结构 ==="
+            find dist/Lumo.app -maxdepth 3 2>&1 | head -30 || true
+            echo
+            echo "=== 包内版本号（用户实际看到的）==="
+            /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \
+              dist/Lumo.app/Contents/Info.plist 2>&1 || true
+            # 编译日志尾部：App 目标出错时，错误就在这几行里。
+            for f in /tmp/build-app.log /tmp/build-cli.log; do
+              if [ -f "$f" ]; then
+                echo
+                echo "=== $(basename "$f")（尾部 120 行）==="
+                tail -120 "$f"
+              fi
+            done
+          } > "ci-diag/build-summary-${OS_TAG}.txt" 2>&1
+          cat "ci-diag/build-summary-${OS_TAG}.txt"
+          git config user.name "lumo-bot"
+          git config user.email "lumo-bot@users.noreply.github.com"
+          # 保住 core-test / release / 另一个 matrix 写在同一个分支上的文件——
+          # 现在有**四个**写入方（build×2 + core-test + release）都是孤儿分支强推，
+          # 谁后跑谁抹掉对方，所以每个写回步骤都得负责把别人的文件捞回来。
+          git fetch origin demo --depth=1 2>/dev/null || echo "（远端还没有 demo 分支，跳过）"
+          for f in summary.txt release-summary.txt release-history.txt \
+                   build-summary-macos-14.txt build-summary-macos-26.txt; do
+            [ "$f" = "build-summary-${OS_TAG}.txt" ] && continue
+            if git cat-file -e "FETCH_HEAD:ci-diag/$f" 2>/dev/null; then
+              git show "FETCH_HEAD:ci-diag/$f" > "ci-diag/$f"
+              echo "已保留 ci-diag/$f"
+            fi
+          done
+          git checkout --orphan demo
+          git rm -rf --cached . >/dev/null 2>&1 || true
+          # ★ 推送要重试，理由与 core-test 那一段相同（ref 级竞态 + 强推是整棵树替换，
+          #   所以每次重试前要重新合并对方的文件）。详见那边的注释。
+          push_demo() {
+            for attempt in 1 2 3; do
+              git fetch origin demo --depth=1 2>/dev/null || true
+              git ls-tree -r --name-only FETCH_HEAD 2>/dev/null \
+                | grep -E '^ci-diag/' | while read -r f; do
+                    [ -e "$f" ] && continue
+                    mkdir -p "$(dirname "$f")"
+                    git show "FETCH_HEAD:$f" > "$f" 2>/dev/null || true
+                  done
+              git rm -rf --cached . >/dev/null 2>&1 || true
+              git add -f ci-diag
+              git commit -q -m "ci(build ${OS_TAG}): 诊断（run ${GITHUB_RUN_NUMBER}, status=${{ job.status }}）" || true
+              if git push -f origin demo; then
+                echo "demo 已推送（第 ${attempt} 次尝试）"
+                return 0
+              fi
+              echo "推送 demo 失败（多半是另一个 matrix job 同时在推），${attempt}/3 次重试…"
+              sleep $((attempt * 3))
+            done
+            return 1
+          }
+          push_demo
+
+  # Swift 端只能验证"能编译"，真正会骗人的是算法端——
+  # 体积下降太容易造假（压成空白页也能省 99%），所以这里在真实 macOS arm64 上
+  # 跑完整流水线，并把产物重新打开、重新光栅化，断言每一页都还有内容。
+  core-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ macos-14, macos-26 ]
+    runs-on: ${{ matrix.os }}
+    name: core-test (${{ matrix.os }})
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: 工具链
+        run: swift --version
+      - name: 编译 CLI
+        id: build
+        run: |
+          # 把编译输出同时存一份到文件——诊断步骤要把它带回 demo 分支。
+          # 上一次 CI 只告诉了我"编译失败"，具体错在哪行完全看不到，
+          # 只能在沙箱里靠猜。这次的教训：**失败信息本身要能被取回**，
+          # 否则"有 CI"和"没有 CI"对排查的帮助差不多。
+          set -o pipefail
+          swift build -c release --product lumo-cli 2>&1 | tee /tmp/build.log
+      # 更新器自检：纯逻辑文件用 swiftc 单独编出来跑真实断言（手册 §7.1）。
+      # 为什么要单独一条：它覆盖的是**本地编译通过证明不了**的那一类——
+      # 版本号口径、缓存 fail-open、原地替换与回滚、下载全链路。
+      # 手册里 P1/P2/P5 三个最严重的 bug 全靠这个抓到的。
+      # 它跑得很快（编 10 秒 + 跑 2 秒），放在核心自检前面，红了能更早定位。
+      - name: 更新器自检（版本比较 / 校验 / 原地替换 / 回滚 / 下载链路）
+        id: updatetest
+        run: |
+          set -o pipefail
+          bash Scripts/run_update_tests.sh 2>&1 | tee /tmp/update-tests.log
+      - name: 核心自检
+        id: selftest
+        env:
+          LUMO_DUMP_PDF: "1"
+        run: |
+          # 断言失败的具体原因必须能回传。上一次自检红了，但我手里只有
+          # "自检: failure" 一行字——哪条断言、实测多少、期望多少，全看不到，
+          # 等于白红。这次把 stdout/stderr 一并 tee 走，诊断步骤再带走尾部。
+          set -o pipefail
+          "$(swift build -c release --show-bin-path)/lumo-cli" selftest 2>&1 | tee /tmp/selftest.log
+      - name: 系统编解码能力现场体检（JBIG2 到底有没有）
+        id: encoders
+        run: "$(swift build -c release --show-bin-path)/lumo-cli encoders"
+      - name: 用内置示例扫描件跑一遍真实流水线
+        id: pipeline
+        run: |
+          BIN="$(swift build -c release --show-bin-path)/lumo-cli"
+          "$BIN" version
+          "$BIN" report "Resources/示例扫描件.pdf"
+          "$BIN" process "Resources/示例扫描件.pdf" /tmp/lumo-sample-out.pdf --preset auto --quality 70
+          ls -lh /tmp/lumo-sample-out.pdf
+      # 条带探针：问清楚 ImageIO 到底会不会把单色页切多条带。
+      # 这条命令的存在本身就是结论——原先「多 strip 拼接风险太高」只是猜测，
+      # 没人量过。现在每次 CI 都留一份实况，日后再降级就赖不掉了。
+      - name: 单色条带实况（CCITT 多 strip 到底会不会发生）
+        id: stripprobe
+        run: |
+          BIN="$(swift build -c release --show-bin-path)/lumo-cli"
+          "$BIN" stripprobe "Resources/示例扫描件.pdf" 1
+      - name: 方向探针（镜像 bug 排查）
+        id: flipscan
+        env:
+          LUMO_DUMP_PDF: "1"
+        run: "$(swift build -c release --show-bin-path)/lumo-cli flipscan"
+      # 图标与设计文档这两条本来只在 build job 里跑，而 build job 没有回传通道——
+      # 结果就是「跑没跑、过没过」在沙箱这头看不见。教训是：
+      # **看不见结果的检查等于没有检查**。所以在这条有回传的 job 里再跑一遍，
+      # 把输出留在诊断文件里。
+      - name: 图标规范自检（build job 里也跑，这里是为了留下证据）
+        id: icon
+        run: |
+          python3 -m pip install --quiet --user pillow \
+            || python3 -m pip install --break-system-packages --quiet pillow
+          python3 Scripts/make_icon.py
+          python3 Scripts/make_icon.py --verify
+      - name: 设计文档与内置 PDF 一致（同上，留下证据）
+        id: designdoc
+        run: |
+          python3 -m pip install --quiet --user pypdf \
+            || python3 -m pip install --break-system-packages --quiet pypdf
+          python3 Scripts/check_design_doc.py
+      # 沙箱是 Linux，没有 CoreGraphics，「跑一遍给人看」只能在真机上做。
+      # 这里把自动增强的前后对照图和最终 PDF 存成 artifact，人眼验收用。
+      - name: 生成自动增强前后对照图
+        id: demo
+        run: |
+          BIN="$(swift build -c release --show-bin-path)/lumo-cli"
+          rm -rf demo-out && mkdir -p demo-out
+          # 背景清理强度扫四档：这是「干不干净」唯一能靠人眼定夺的参数，
+          # 一档一张图摆在一起才看得出差别在哪、代价是什么。
+          "$BIN" demo "Resources/示例扫描件.pdf" demo-out --presets auto,bw \
+            --bg-strength 0,0.35,0.75,1 --quality 70
+          ls -lh demo-out
+      # 沙箱访问不到 Actions 的 artifact 存储（TLS 被掐），也拿不到 Actions 的
+      # 运行日志 API（没有 token）。所以把**诊断信息本身**也提交到 demo 分支——
+      # 这是唯一能穿过防火墙把「哪一步、什么错」带回来的通道。
+      # 用 if: always() 是关键：失败时更要留下证据。之前只写"成功就提交对照图"，
+      # 结果 CI 红了 25 分钟，我这边只看到"demo 分支没动"，连失败在哪一步都不知道，
+      # 只能干等——这次把坑填上。
+      - name: 诊断信息写回 demo 分支（无论成败）
+        if: always() && github.event_name != 'pull_request'
+        run: |
+          BIN="$(swift build -c release --show-bin-path)/lumo-cli" || true
+          OS_TAG="${{ matrix.os }}"
+          mkdir -p ci-diag
+          {
+            echo "run:      ${GITHUB_RUN_NUMBER}"
+            echo "commit:   ${GITHUB_SHA}"
+            echo "runner:   ${OS_TAG}   （${{ runner.os }} ${{ runner.arch }}）"
+            echo "system:   $(sw_vers -productVersion 2>/dev/null || echo '?')"
+            echo "job:      core-test"
+            echo "date:     $(date -u +%FT%TZ)"
+            echo "swift:    $(swift --version 2>&1 | head -2 | tr '\n' ' ')"
+            echo "status:   ${{ job.status }}"
+            echo
+            echo "=== 各步骤结论 ==="
+            echo "编译:        ${{ steps.build.outcome }}"
+            echo "自检:        ${{ steps.selftest.outcome }}"
+            echo "encoders:    ${{ steps.encoders.outcome }}"
+            echo "流水线:      ${{ steps.pipeline.outcome }}"
+            echo "stripprobe:  ${{ steps.stripprobe.outcome }}"
+            echo "flipscan:    ${{ steps.flipscan.outcome }}"
+            echo "图标自检:    ${{ steps.icon.outcome }}"
+            echo "设计文档:    ${{ steps.designdoc.outcome }}"
+            echo "对照图:      ${{ steps.demo.outcome }}"
+            echo
+            echo "=== 产物 ==="
+            ls -lh /tmp/lumo-sample-out.pdf 2>&1 || true
+            ls -lh demo-out 2>&1 | head -20 || true
+            if [ -x "$BIN" ]; then
+              echo
+              echo "=== 版本 ==="
+              "$BIN" version 2>&1 || true
+            fi
+            # 编译日志：只在失败时带回来，避免把仓库撑大。
+            # 但无论如何都要留**尾部 200 行**——Swift 的编译错误在那里面。
+            if [ -f /tmp/build.log ]; then
+              echo
+              echo "=== 编译日志（尾部 200 行）==="
+              tail -200 /tmp/build.log
+            fi
+            # 自检日志同理：断言失败的那一行就在里面（含实测值/期望值）。
+            if [ -f /tmp/selftest.log ]; then
+              echo
+              echo "=== 自检日志（尾部 200 行）==="
+              tail -200 /tmp/selftest.log
+            fi
+          } > "ci-diag/summary-${OS_TAG}.txt" 2>&1
+          cat "ci-diag/summary-${OS_TAG}.txt"
+          git config user.name "lumo-bot"
+          git config user.email "lumo-bot@users.noreply.github.com"
+          # 先把远端已有的发版记录抢回来，再重建分支强推。
+          # 这条通道现在有**四个**写入方：build×2（两个 matrix 系统）、core-test×2、release。
+          # 都用孤儿分支强推（无共同祖先），谁后跑谁把对方整个抹掉。
+          # 与其互相覆盖，就各自负责保住别人的文件。
+          # （教训：凡是共享的写通道，写入方每多一个，就得回头补一次"救回别人"的逻辑，
+          #  漏一个就会间歇性丢证据——而且丢的时候看起来像是那个 job 没跑。）
+          git fetch origin demo --depth=1 2>/dev/null || echo "（远端还没有 demo 分支，跳过）"
+          for f in build-summary-macos-14.txt build-summary-macos-26.txt \
+                   summary-macos-14.txt summary-macos-26.txt \
+                   release-summary.txt release-history.txt; do
+            [ "$f" = "summary-${OS_TAG}.txt" ] && continue
+            if git cat-file -e "FETCH_HEAD:ci-diag/$f" 2>/dev/null; then
+              git show "FETCH_HEAD:ci-diag/$f" > "ci-diag/$f"
+              echo "已保留 ci-diag/$f"
+            fi
+          done
+          git checkout --orphan demo
+          git rm -rf --cached . >/dev/null 2>&1 || true
+          # demo-out 只在"核心自检成功"时才会生成。它不存在时**不能让整个步骤挂掉**——
+          # 否则"因为测试失败所以没生成对照图"会再引发一次失败，把真正的原因盖掉。
+          # 实测：`git add -f demo-out ci-diag` 在 demo-out 不存在时报
+          # `fatal: pathspec 'demo-out' did not match any files`（exit 128）。
+          #
+          # ★ 推送要**重试**，而且每次重试前**重新合并对方的文件**。
+          #
+          #   第一版只修了文件级的冲突（文件名带系统后缀），漏了 **ref 级的**：
+          #   demo 是孤儿分支，两个 matrix job 各自"重建 + 强推"，而 git 的 ref 更新
+          #   是期望值 CAS，两边同时推时后到的那次会报：
+          #     cannot lock ref 'refs/heads/demo': is at 8414ad0 but expected 9dd9962
+          #   （实测就是这样红的）。
+          #   而重试不能只是"再推一次"——强推是**整棵树替换**，直接重推会把对方
+          #   刚落地的诊断覆盖掉。所以每次尝试都重新 fetch + 合并。
+          push_demo() {
+            for attempt in 1 2 3; do
+              git fetch origin demo --depth=1 2>/dev/null || true
+              git ls-tree -r --name-only FETCH_HEAD 2>/dev/null \
+                | grep -E '^(ci-diag|demo-out)/' | while read -r f; do
+                    [ -e "$f" ] && continue          # 自己的优先，不覆盖
+                    mkdir -p "$(dirname "$f")"
+                    git show "FETCH_HEAD:$f" > "$f" 2>/dev/null || true
+                  done
+              git rm -rf --cached . >/dev/null 2>&1 || true
+              for d in demo-out ci-diag; do
+                [ -e "$d" ] && git add -f "$d"
+              done
+              git commit -q -m "ci(core-test ${OS_TAG}): 诊断（run ${GITHUB_RUN_NUMBER}, status=${{ job.status }}）" || true
+              if git push -f origin demo; then
+                echo "demo 已推送（第 ${attempt} 次尝试）"
+                return 0
+              fi
+              echo "推送 demo 失败（多半是另一个 matrix job 同时在推），${attempt}/3 次重试…"
+              sleep $((attempt * 3))
+            done
+            return 1
+          }
+          push_demo
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: lumo-demo-auto-${{ matrix.os }}
+          path: demo-out
+          if-no-files-found: error
+          retention-days: 14

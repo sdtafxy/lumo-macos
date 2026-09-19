@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Lumo 设计文档</title>
+<style>
+  @page {
+    size: A4;
+    margin: 20mm 18mm 18mm 18mm;
+    @bottom-center {
+      content: "Lumo 设计文档 · " counter(page) " / " counter(pages);
+      font-family: "Noto Sans CJK SC", sans-serif;
+      font-size: 8pt; color: #94A3B8;
+    }
+  }
+  @page :first { @bottom-center { content: ""; } }
+
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Noto Sans CJK SC", "Noto Serif CJK SC", sans-serif;
+    color: #0F172A; font-size: 10.2pt; line-height: 1.72;
+  }
+  h1 { font-size: 30pt; margin: 0 0 4pt; letter-spacing: .5pt; }
+  h2 {
+    font-size: 16pt; margin: 26pt 0 8pt; padding-bottom: 5pt;
+    border-bottom: 2px solid #14B8A6; color: #0D9488;
+  }
+  h3 { font-size: 12pt; margin: 16pt 0 5pt; color: #0F172A; }
+  p { margin: 6pt 0; }
+  ul { margin: 6pt 0 6pt 0; padding-left: 18pt; }
+  li { margin: 3pt 0; }
+  code, .mono {
+    font-family: "Noto Sans Mono CJK SC", monospace;
+    background: #F1F5F9; padding: 1pt 4pt; border-radius: 3pt; font-size: 9pt;
+  }
+  .muted { color: #64748B; }
+  .cover { text-align: left; margin-top: 52mm; }
+  .cover .brand {
+    display: inline-block; background: linear-gradient(120deg,#14B8A6,#34D399);
+    color: #04201C; font-weight: 700; padding: 4pt 12pt; border-radius: 8pt;
+    font-size: 12pt; letter-spacing: 2pt;
+  }
+  .cover .sub { color: #64748B; font-size: 12pt; margin-top: 10pt; }
+  .cover .meta { margin-top: 26pt; font-size: 10pt; color: #475569; }
+  .cover .meta b { color: #0F172A; }
+
+  table { width: 100%; border-collapse: collapse; margin: 8pt 0 12pt; font-size: 9.4pt; }
+  /* 规范表的「值」列必须够宽：自动布局按内容长度分配，会把这一列压到
+     只剩四五个字宽，于是 "0.26 × 边长" 被折成两行、看起来像排版坏了。 */
+  table.spec td:nth-child(1) { width: 13%; }
+  table.spec td:nth-child(2) { width: 26%; }
+  th { background: #E6F7F4; color: #0D9488; text-align: left; }
+  th, td { border: 1px solid #E6EBF1; padding: 5pt 7pt; vertical-align: top; }
+  tr:nth-child(even) td { background: #FAFDFC; }
+
+  .pillars { display: table; width: 100%; border-spacing: 6pt 0; margin: 10pt 0 4pt; }
+  .pillar {
+    display: table-cell; width: 33.3%; background: #F7FAFC;
+    border: 1px solid #E6EBF1; border-radius: 8pt; padding: 10pt 11pt; vertical-align: top;
+  }
+  .pillar .k { color: #14B8A6; font-weight: 700; font-size: 11.5pt; }
+  .pillar .e { color: #94A3B8; font-size: 8.5pt; letter-spacing: 1.2pt; }
+  .pillar p { font-size: 9pt; color: #475569; margin: 5pt 0 0; }
+
+  .box {
+    background: #F7FAFC; border-left: 3pt solid #14B8A6;
+    padding: 7pt 10pt; margin: 9pt 0; border-radius: 0 6pt 6pt 0; font-size: 9.4pt;
+  }
+  .warn { border-left-color: #E2A820; background: #FFFBEB; }
+  .swatch { display: inline-block; width: 9pt; height: 9pt; border-radius: 2pt; margin-right: 4pt;
+            vertical-align: -1pt; border: 1px solid #CBD5E1; }
+  .formula {
+    font-family: "Noto Sans Mono CJK SC", monospace; background: #0F172A; color: #E2E8F0;
+    padding: 8pt 10pt; border-radius: 6pt; font-size: 8.6pt; margin: 8pt 0; line-height: 1.6;
+  }
+  .toc td { border: none; padding: 2.5pt 0; font-size: 9.6pt; }
+  .toc td.n { color: #14B8A6; font-weight: 700; width: 26pt; }
+  .pagebreak { page-break-before: always; }
+
+  /* 标识方块：与 App 内侧边栏 Logo、打包用 .icns 同一套参数。
+     文档里画得出「形状」，也就画得出「不一致」——以前这里只有文字描述，
+     结果 App 内和 .icns 各走各的，谁也没发现。 */
+  /* 标识样例用内联 SVG 画，比例与 LumoMark 完全一致，
+     而不是拿一个字符凑——"字符凑"和"真几何"迟早会对不上。 */
+  .markrow td { vertical-align: middle; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div><span class="brand">LUMO</span></div>
+  <h1>流明 · 设计文档</h1>
+  <div class="sub">PDF 扫描增强 · 文本识别 · 智能压缩</div>
+  <div class="meta">
+    <p><b>版本</b>　0.0.2</p>
+    <p><b>平台</b>　macOS 13+</p>
+    <p><b>形态</b>　原生 App（SwiftUI）+ 命令行工具 lumo-cli</p>
+    <p><b>依赖</b>　零第三方依赖：仅 CoreGraphics / Core Image / Vision / ImageIO / zlib</p>
+    <p class="muted">本文档随 App 内置，可在「关于」页随时打开。</p>
+  </div>
+</div>
+
+<div class="pagebreak"></div>
+
+<h2>目录</h2>
+<table class="toc">
+  <tr><td class="n">01</td><td>产品定位与命名</td></tr>
+  <tr><td class="n">02</td><td>三条设计支柱</td></tr>
+  <tr><td class="n">03</td><td>视觉与交互规范</td></tr>
+  <tr><td class="n">04</td><td>技术架构：为什么是零依赖</td></tr>
+  <tr><td class="n">05</td><td>内存：处理能力不该被文件大小卡住</td></tr>
+  <tr><td class="n">06</td><td>流水线：感知 → 推荐 → 增强 → 识别 → 压缩</td></tr>
+  <tr><td class="n">07</td><td>增强模式：从「滤镜清单」到「效果选择」</td></tr>
+  <tr><td class="n">08</td><td>压缩：自适应逐页路由与分层压缩（MRC）</td></tr>
+  <tr><td class="n">09</td><td>关于 JBIG2 的诚实说明</td></tr>
+  <tr><td class="n">10</td><td>验证级别与已知限制</td></tr>
+  <tr><td class="n">11</td><td>设计取舍记录：为什么是这些选项</td></tr>
+</table>
+
+<h2>01 · 产品定位与命名</h2>
+<p><b>Lumo</b>（流明，光通量单位）解决的问题很具体：用 Adobe Acrobat 处理扫描 PDF，
+要在「扫描增强 → 文本识别 → 压缩」三个面板之间来回切换、逐项调参，
+调完不满意还要反复重来。整个过程里用户做的决定，大部分其实机器可以做对。</p>
+<p>流明是「照在纸上有多亮」的单位。这个名字选定的产品气质是：<b>把纸面清理干净，
+但不改变纸上的内容</b>。它不是图像编辑器，不是 OCR 引擎的壳，也不是压缩器的前端——
+它是一条自动工作流，用户只需要回答「要不要更小的文件」。</p>
+
+<h2>02 · 三条设计支柱</h2>
+<div class="pillars">
+  <div class="pillar">
+    <div class="e">SENSE</div><div class="k">感知</div>
+    <p>打开文件先做体检：有没有文字层、彩色还是灰阶、估计分辨率、
+    倾斜角、噪声强度、背景是否不匀。所有后续决定都建立在体检结果上，
+    而不是建立在用户的猜测上。</p>
+  </div>
+  <div class="pillar">
+    <div class="e">SMART</div><div class="k">省心</div>
+    <p>给推荐而不是给参数表。已经识别过的文件自动跳过 OCR；
+    干净的文字页直接走单色极限压缩。用户可以改，但默认值必须是对的。</p>
+  </div>
+  <div class="pillar">
+    <div class="e">LIGHT</div><div class="k">清新</div>
+    <p>多档压缩方案 + 用真实抽样页外推的体积预估。
+    「估计多大」必须是量出来的，不是拍脑袋的公式。</p>
+  </div>
+</div>
+
+<h2>03 · 视觉与交互规范</h2>
+<h3>色彩</h3>
+<table>
+  <tr><th>令牌</th><th>值</th><th>用途</th></tr>
+  <tr><td><span class="swatch" style="background:#14B8A6"></span>primary</td><td class="mono">#14B8A6</td><td>主操作、选中态、强调</td></tr>
+  <tr><td><span class="swatch" style="background:#0D9488"></span>primaryDeep</td><td class="mono">#0D9488</td><td>数字、结论性文字</td></tr>
+  <tr><td><span class="swatch" style="background:#E6F7F4"></span>primarySoft</td><td class="mono">#E6F7F4</td><td>选中卡片底色</td></tr>
+  <tr><td><span class="swatch" style="background:#F7FAFC"></span>panelAlt</td><td class="mono">#F7FAFC</td><td>次级面板</td></tr>
+  <tr><td><span class="swatch" style="background:#0F172A"></span>text</td><td class="mono">#0F172A</td><td>正文</td></tr>
+  <tr><td><span class="swatch" style="background:#64748B"></span>muted</td><td class="mono">#64748B</td><td>辅助说明</td></tr>
+  <tr><td><span class="swatch" style="background:#E6EBF1"></span>border</td><td class="mono">#E6EBF1</td><td>描边</td></tr>
+</table>
+<h3>形状与栅格</h3>
+<ul>
+  <li>卡片圆角 16pt，控件圆角 11pt；</li>
+  <li>全部间距落在 8pt 栅格上（8 / 12 / 14 / 16 / 18 / 26）；</li>
+  <li>正文 13.5pt，标题 15–20pt，数字结论 20–24pt 加粗。</li>
+</ul>
+<h3>品牌标识（App 图标与界面 Logo 是同一个东西）</h3>
+<p>标识只有一个形态：<b>青绿对角渐变的方底座，左上角一束纵向拉长的星芒</b>。
+欢迎页、关于页、打包用的 <span class="mono">Lumo.icns</span>、README 顶部的
+<span class="mono">docs/logo.png</span> 全部使用它，不允许有任何一处另起炉灶。</p>
+<p><b>构图不是"把星芒放在中间"，而是有意偏置的：</b>星芒是这枚标识里唯一的动词。
+放正中最稳，也最没有表情；偏到左上之后，右下的空白才成为画面的一部分——
+<b>留白在讲"这一页还灰着"，星芒在讲"这里被点亮了"</b>。
+所以下面那三个尺寸里，星芒的位置与比例都<b>不变</b>，只是整体缩放。</p>
+<table class="markrow">
+  <tr>
+    <td>
+      <svg width="26pt" height="26pt" viewBox="0 0 100 100">
+        <defs><linearGradient id="mg0" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#14B8A6"/><stop offset="1" stop-color="#34D399"/>
+        </linearGradient></defs>
+        <rect x="0" y="0" width="100" height="100" rx="26" fill="url(#mg0)"/>
+        <path d="M33 12.5 L36.18 36.14 L48 42.5 L36.18 48.86 L33 72.5 L29.82 48.86 L18 42.5 L29.82 36.14 Z" fill="#04201C"/>
+      </svg>
+      <div class="muted" style="font-size:8pt">26pt</div>
+    </td>
+    <td>
+      <svg width="56pt" height="56pt" viewBox="0 0 100 100">
+        <defs><linearGradient id="mg1" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#14B8A6"/><stop offset="1" stop-color="#34D399"/>
+        </linearGradient></defs>
+        <rect x="0" y="0" width="100" height="100" rx="26" fill="url(#mg1)"/>
+        <path d="M33 12.5 L36.18 36.14 L48 42.5 L36.18 48.86 L33 72.5 L29.82 48.86 L18 42.5 L29.82 36.14 Z" fill="#04201C"/>
+      </svg>
+      <div class="muted" style="font-size:8pt">56pt</div>
+    </td>
+    <td>
+      <svg width="92pt" height="92pt" viewBox="0 0 100 100">
+        <defs><linearGradient id="mg2" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#14B8A6"/><stop offset="1" stop-color="#34D399"/>
+        </linearGradient></defs>
+        <rect x="0" y="0" width="100" height="100" rx="26" fill="url(#mg2)"/>
+        <path d="M33 12.5 L36.18 36.14 L48 42.5 L36.18 48.86 L33 72.5 L29.82 48.86 L18 42.5 L29.82 36.14 Z" fill="#04201C"/>
+      </svg>
+      <div class="muted" style="font-size:8pt">92pt</div>
+    </td>
+  </tr>
+</table>
+<table class="spec">
+  <tr><th>项</th><th>值</th><th>说明</th></tr>
+  <tr><td>渐变起</td><td class="mono">#14B8A6</td><td>左上角</td></tr>
+  <tr><td>渐变止</td><td class="mono">#34D399</td><td>右下角，<b>变亮不变暗</b></td></tr>
+  <tr><td>形状</td><td class="mono">1 : 1</td>
+      <td>底座做成正方形是刻意的取舍：macOS 的图标槽位就是正方形，
+      底座若做成别的比例，同一个标识在桌面和窗口里就是两种形状</td></tr>
+  <tr><td>圆角比</td><td class="mono">0.26</td>
+      <td>圆角 / 边长。连续圆角；0.30 往上开始像胶囊，0.26 才是「一方底座」</td></tr>
+  <tr><td>星芒形状</td><td>四角星（手绘路径）</td>
+      <td>四个外顶点指向正上 / 右 / 下 / 左，四个内凹点落在对角线上。
+      <b>不用字符 U+2726</b>——「纵向拉长」只能靠路径，把字形缩放会让笔画一起
+      变粗、四个尖一起钝掉</td></tr>
+  <tr><td>星芒宽</td><td class="mono">0.30</td>
+      <td>星芒宽 / 边长；横向外顶点半径 = 0.15 × 边长</td></tr>
+  <tr><td>星芒纵向比</td><td class="mono">2.00</td>
+      <td>高 / 宽。1.00 才是正四角星——正四角星会读成一个「点」；
+      拉长之后它才成为一束有方向的光</td></tr>
+  <tr><td>星芒位置</td><td>左上偏置</td>
+      <td>左留白 0.18、上留白 0.125（都是 × 边长）。上留白比左留白小：
+      星芒的上下是两个细尖、视觉份量轻，不需要等量的留白</td></tr>
+  <tr><td>星芒内凹比</td><td class="mono">0.30</td>
+      <td>内顶点 / 外顶点。0.30 比默认的 1/√2 凹得更深，四个角才显得利</td></tr>
+  <tr><td>星芒颜色</td><td class="mono">#04201C</td><td>深墨绿，不是白色</td></tr>
+</table>
+<div class="box warn">以上是<b>唯一基准</b>，写在 <span class="mono">Sources/LumoApp/Design.swift</span>
+的 <span class="mono">LumoDesign.LumoMark</span> 里。<span class="mono">Scripts/make_icon.py</span>
+的 <span class="mono">GRAD_START / GRAD_END / STAR_INK / CORNER_RATIO / STAR_W_RATIO /
+STAR_ELONGATION / STAR_INSET_L / STAR_INSET_T / STAR_INNER_RATIO</span> 是照着它写的，
+两边文件头互相注明。改一处就改两处——这是规范，不是建议。
+同一个脚本还产出 README 顶部那个 <span class="mono">docs/logo.png</span>，
+所以它不可能是"手截的图"、也就不会在改了参数之后忘了更新。<br><br>
+这条规范存在的原因很具体：一旦「标识」的定义散在几处，两边迟早会各长各的——
+渐变方向可以相反、星芒可以一白一深、圆角比可以一个 0.26 一个 0.225，
+甚至多画一个文档页图形进去。写死参数就是为了让这种漂移<b>在纸面上不可能</b>。</div>
+<h3>交互</h3>
+<ul>
+  <li>每一个需要用户判断的地方，都先给出系统推荐值；</li>
+  <li>能预览的一律预览：体检结论、增强前后对比、预估体积；</li>
+  <li>异步操作必须有进度反馈，并且进度文字说明「正在做什么」，而不是一个转圈。</li>
+  <li><b>任何一步都不能是死胡同</b>：选了文件之后界面上必须始终留着「换一个文件」的入口。
+  处理完的文档不该逼用户退出 App 才能处理下一个。</li>
+</ul>
+<h3>窗口生命周期</h3>
+<table>
+  <tr><th>动作</th><th>期望行为</th></tr>
+  <tr><td>点窗口关闭按钮</td><td>窗口关闭，App 不退出</td></tr>
+  <tr><td>关闭后再点 Dock 图标</td><td><b>把窗口叫回来</b>，不是无响应</td></tr>
+  <tr><td>Command + N</td><td>开一个新窗口，每个窗口有自己独立的文件与处理状态</td></tr>
+  <tr><td>Command + W</td><td>只关当前窗口</td></tr>
+</table>
+<div class="box">引擎（Core Image / Vision 管线、编码器缓存）全应用共享一份，
+「当前文件 / 预览 / 处理结果」每窗口一份。这两类状态混在一起会出两类 bug：
+要么第二个窗口能看到第一个窗口的文件名，要么同一个文件被两个窗口并行处理时互相踩内存。</div>
+<div class="box warn">有一个反例值得写下来：<b>删掉「新建窗口」菜单项来"禁掉多窗口"</b>。
+它的副作用是关闭窗口之后，<b>没有任何常规途径能把窗口叫回来</b>——点 Dock 图标也不响应，
+只能彻底退出重开。窗口生命周期不要靠删菜单项来管理，要靠
+<span class="mono">applicationShouldHandleReopen</span> 显式实现；
+单窗口这件事由场景类型（<span class="mono">Window</span> 而不是
+<span class="mono">WindowGroup</span>）保证，而不是靠"不给入口"。</div>
+
+<h2>04 · 技术架构：为什么是零依赖</h2>
+<p>Lumo 只链接系统框架：CoreGraphics 负责 PDF 渲染与手写 PDF，
+Core Image 负责中值滤波与非锐化掩膜，Vision 负责文字识别，
+ImageIO 负责 JPEG / JPEG2000 / TIFF，zlib 负责无损压缩。
+用户下载下来的 DMG 解压即用，没有 Python、没有 Homebrew、没有模型文件。</p>
+<p>这个决定不是免费的：macOS 的 SDK 没有公开的 JBIG2 编码器（见 09 节），
+OCR 的语言能力由系统提供而不能像 Tesseract 那样按需装语言包。
+但换来的是「装完就能用」，对一个本地工具来说，这一点值回票价。</p>
+
+<h2>05 · 内存：处理能力不该被文件大小卡住</h2>
+<p>一次要处理几百页 A4 彩色扫描件时，最占内存的从来不是 PDF 文件本身，而是
+<b>页面的位图</b>。A4 在 300 dpi 下的 RGB 位图是 2480 × 3508 × 3 ≈ <b>26 MB</b>，
+转成 CoreGraphics 的 32 位上下文就是 <b>33 MB/页</b>。</p>
+<table>
+  <tr><th>做法</th><th>10 页彩色文档的驻留峰值</th></tr>
+  <tr><td>位图不主动释放 + 编码结果全部攒在内存里再落盘</td><td class="mono">约 660 MB 起，随页数线性上涨</td></tr>
+  <tr><td><b>逐页自动释放 + 编码结果流式落盘（当前做法）</b></td><td class="mono">与「正在处理的一两页」同量级，与总页数无关</td></tr>
+</table>
+<p>两处修正缺一不可：</p>
+<ul>
+  <li><b>及时释放</b>——渲染 / 增强 / 编码走的是 CoreGraphics 与 Core Image，
+  它们产生的对象交给 autorelease 管理。在循环里不套 <span class="mono">autoreleasepool</span>，
+  这些位图要等整个函数返回才回收，于是「处理一页释放一页」变成了「处理 N 页攒 N 份」。</li>
+  <li><b>流式落盘</b>——PDF 手写器改成每写完一页就把该页的字节倾倒到磁盘并清空缓冲，
+  不再把所有编码数据攒成一个数组最后一次性写出。</li>
+</ul>
+<div class="box warn">流式写入带来一个隐蔽的记账问题：分次倾倒之后，
+写入器内部的「当前缓冲长度」不再是「文件中的绝对位置」，
+而 PDF 的交叉引用表（xref）和 <span class="mono">startxref</span> 记录的必须是<b>绝对偏移</b>。
+少加一个「已落盘前缀长度」，肉眼完全看不出来——PDF 照样生成、照样能打开，
+只有页数一多、缓冲倾倒过若干次之后，xref 才会整体指偏，表现为某些阅读器打不开或跳页。
+这个 bug 只有在<b>刻意让每页图像大小不同</b>的测试里才会暴露，自检断言已按这个方式构造。</div>
+<p>流式写入还要求对象编号布局<b>提前定死</b>：PDF 的 <span class="mono">/Pages</span>
+节点里要列出所有页面的 <span class="mono">/Kids</span>，而这个节点写在第一页之前，
+所以「第几页用哪几个对象号」在开始写之前就必须算好，不能像以前那样
+根据「这份文档有没有文字层、用不用 MRC」动态决定。</p>
+
+<h2>06 · 流水线</h2>
+<table>
+  <tr><th>阶段</th><th>输入</th><th>做的事</th><th>产出</th></tr>
+  <tr><td>感知</td><td>PDF</td><td>抽样渲染 ≤6 页，判色彩模式 / DPI / 倾斜 / 噪声 / 背景不匀，全文数文字层字符</td><td>Analysis</td></tr>
+  <tr><td>推荐</td><td>Analysis</td><td>决定增强模式、要不要 OCR、压缩路由；生成三档方案并各自预估体积</td><td>Recommendation + 3 Plans</td></tr>
+  <tr><td>增强</td><td>页面位图</td><td>纠偏 → 去网纹 → 模式处理 → 锐化（顺序不可换）</td><td>增强后位图</td></tr>
+  <tr><td>识别</td><td>增强后位图</td><td>Vision 逐行识别，写入不可见或可见文字层，附 ToUnicode CMap</td><td>可搜索 / 可编辑 PDF</td></tr>
+  <tr><td>压缩</td><td>增强后位图</td><td>逐页判定编码方式，必要时分层（MRC）</td><td>最终 PDF</td></tr>
+  <tr><td>校验</td><td>产物</td><td>重新打开、重新光栅化，逐页断言非空、非负片</td><td>可信的产物</td></tr>
+</table>
+<div class="box">两条硬规则：<b>一</b>，处理分辨率只降不升——源件只有 150 dpi 时
+重采样到 200 dpi 不会变清晰，只会凭空多出 78% 的像素；
+<b>二</b>，每个滤镜过完都要过「内容守卫」：直方图对比度掉到原图 60% 以下就视为把内容洗掉了，放弃该滤镜。</div>
+
+<h2>07 · 增强模式</h2>
+<p>最直白的做法是把「纠偏 / 背景去除 / 去网纹 / 文本锐化」四个开关全摊在界面上。
+主流手机扫描 App（扫描全能王、布丁扫描、汉王扫描）的用户研究给了一个更清楚的答案：
+用户想选的是<b>效果</b>，不是滤镜。于是 Lumo 把它们收敛成五个模式：</p>
+<table>
+  <tr><th>模式</th><th>适用</th><th>做法</th></tr>
+  <tr><td>自动增强</td><td>不确定 / 灰阶文档</td><td>逐页判断：文字页走黑白，含图页保色彩</td></tr>
+  <tr><td>黑白</td><td>合同、票据、纯文字</td><td>只留纯黑与纯白，底灰、阴影、污渍全部清掉</td></tr>
+  <tr><td>增强</td><td>带图表、印章、照片</td><td>保留彩色与插图，清背景、校正光照、略提饱和，<b>绝不二值化</b></td></tr>
+  <tr><td>对比度</td><td>发灰、太淡的扫描件</td><td>保持原有色调，按 2%/98% 分位数把明暗拉满到 0–255</td></tr>
+  <tr><td>原图</td><td>只想识别或压缩</td><td>不做画面处理，只做识别与压缩</td></tr>
+</table>
+<h3>为什么是 5 个，而不是照搬布丁扫描的 8 个</h3>
+<p>布丁扫描处理完照片后给出 8 个选项：<b>原图、增强、AI 超清、增亮、去屏纹、柔和、黑白、灰度</b>。
+把这 8 个逐一对照 Lumo 的能力，会发现它们并不在同一条坐标轴上——
+有的在描述<b>输出形态</b>（原图 / 灰度 / 黑白），有的在描述<b>单点调整</b>（增亮 / 柔和），
+有的属于<b>凭外部模型猜内容</b>（AI 超清）。三条理由决定了取舍：</p>
+<ul>
+  <li><b>「灰度」与「对比度」是同一件事。</b>「灰度」描述的是「不要彩色」，
+      但 Lumo 的自动路由本来就会给纯文字页做灰度化；真正需要用户决定的
+      「要不要保留色彩」由「增强」这一档承担。再单独列一个「灰度」，
+      用户面对的就是两个会给出相似结果的按钮。</li>
+  <li><b>「AI 超清」不做，也不该做。</b>它的本质是用一个生成模型<b>猜</b>笔画细节，
+      对合同、票据这类文档是不可接受的风险——它会让「扫描件」不再忠于原件。
+      保持轻便是这个项目的前提：零外部模型、零网络请求、只用系统自带 SDK。</li>
+  <li><b>「增亮」「柔和」是参数，不是模式。</b>它们各自只改一个维度，
+      而 Lumo 的「对比度」可以覆盖「太淡」，「增强」已经内置了光照归一化。
+      把它们提成顶级模式会把「选一种效果」重新变成「填一张参数表」——
+      正是这一节开头要避免的事。</li>
+</ul>
+<p>结论：<b>对扫描版 PDF，用户真正需要区分的是「留住色彩还是只要黑白」，
+再加一个「我怕软件改坏了，给我原样」的退路。</b>5 个模式把这条判断讲清楚了，
+不需要 8 个。剩下的细粒度调整留在「微调」里，需要的人自己去找。</p>
+<h3>黑白档的核心算法</h3>
+<p>即局部自适应二值化，也是扫描全能王那类产品「一键黑白」背后的思路：</p>
+<div class="formula">mean  = 滑动窗口局部均值（窗口 ≈ 页宽 / 110，最小 9）<br>
+out   = v &lt; mean × 0.90 ? 0 : 255</div>
+<p>关键在 <span class="mono">× 0.90</span> 这一项。如果直接拿局部均值当阈值，
+渐变背景（阴影、光照不匀）会在偏暗的一侧整片发黑——那一片的均值本来就更暗。
+乘一个小于 1 的系数相当于给背景留出余量，而文字像素远低于均值，几乎不受影响。
+窗口如果太小就不像「局部」，太大会把整页糊成一坨，所以它跟着分辨率走。</p>
+<h4>为什么不用 Sauvola（一次被实测否决的升级）</h4>
+<p>学术界更常见的做法是 Sauvola（<span class="mono">T = μ[1 − k(1 − σ/R)]</span>，
+文献默认 <span class="mono">k=0.2~0.5、R=128</span>）或 Wolf。它显然更"名门正派"，
+我一度换成了 <span class="mono">k=0.34、R=128</span>，然后在沙箱里用 numpy
+把两套算法逐像素跑了一遍，结果和预期相反：</p>
+<table>
+  <tr><th>页面</th><th>局部均值×0.90</th><th>Sauvola(k=.34,R=128)</th></tr>
+  <tr><td>高对比度合成页</td><td>正常</td><td>正常</td></tr>
+  <tr><td>光照渐变页（左亮右暗）</td><td>两侧均衡</td><td><b>亮侧整片消失</b></td></tr>
+</table>
+<p>根因是 <span class="mono">R</span> 的标定场景不同：<span class="mono">R=128</span>
+是按高对比度文档定的，而真实扫描件笔画像素的标准差往往只有 10~20，
+于是 <span class="mono">σ/R</span> 很小、系数掉到 0.66 附近，
+浅笔画与暗侧大片被推到了阈值以上，直接判成背景。
+把 <span class="mono">k</span> 压到 0.10 能救回来，
+但与 <span class="mono">μ×0.90</span> <b>逐像素完全相同</b>——等于绕回原点。
+Sauvola 的价值全在 <span class="mono">σ</span> 项上，而<b>在本项目的目标场景里，
+σ 项带来的不是区分度而是误判</b>，所以保留原来这个更简单、也更符合直觉的做法。</p>
+<div class="box">顺带记一个方法论上的坑：做这次对照时，第一版测量脚本用积分图近似滑动窗口，
+<b>边缘语义与实现不同步，内部区域就差 31 个灰阶</b>。据此得出的两个结论全是错的。
+改用暴力真窗口做基准并交叉验证（内部误差 0.0000）后重跑，才有上面这张表。
+<b>测量工具本身要先被验证。</b>这件事现在已经固化成 CI 里的回归断言。</div>
+<div class="box warn">二值化会把孤立噪点放大成黑斑，所以在噪声偏高时先做一次中值滤波。
+同时设有退化保护：结果「几乎全黑」或「几乎全白」时退回 Otsu 全局阈值，再不行就用原图。
+<b>已知边界</b>：窗口有 9 像素的下限，窄页面（宽 &lt; 约 1000px）上的细笔画可能在
+「窗口内均值 ≈ 笔画灰度」时被挖空，这是所有局部阈值法（含 Sauvola / Wolf / Niblack）的共性，
+不是这一版的缺陷。</div>
+<h3>先看再跑：效果预览</h3>
+<p>参数描述得再清楚，也不如让用户直接看到结果。增强卡正下方就是「处理前 / 处理后」
+并排预览，可翻页，切换模式或点刷新时按当前设置即时重算这一页
+（只渲染一页、只跑增强，不做 OCR 不做压缩，所以几百毫秒出结果）。
+放在这个位置是因为它紧挨着做决定的地方——选完模式立刻能看到，不必先跑完整流程再后悔。</p>
+<div class="box">纠偏 / 去网纹 / 文本锐化收进「微调」而不是和模式并列：
+它们只在少数文件上才有用，摆在模式旁边会把「选一种效果」变成「填一张参数表」。</div>
+
+<h2>08 · 压缩</h2>
+<h3>自适应逐页路由</h3>
+<ul>
+  <li><b>单色页</b>（中间调像素 &lt; 12%）→ CCITT Group 4，文字页通常能省 90% 以上；</li>
+  <li><b>灰阶页</b> → JPEG 或 JPEG2000，质量跟随用户滑杆；</li>
+  <li><b>彩色页</b> → JPEG2000（体积最优）或 JPEG（兼容最优）。</li>
+</ul>
+<h3>分层压缩（MRC）</h3>
+<p>照片式扫描件——手机拍的、有阴影有噪点——用 JPEG 压整页时，
+为了保住文字边缘只能给高码率，于是纸纹和噪点也被高保真地存了下来。
+但人眼对<b>背景</b>的分辨率极不敏感（它只是一张纸），对<b>文字边缘</b>却极其敏感。
+把两者拆开分别编码，就是 MRC（Mixed Raster Content），
+也是目前扫描件压缩的事实标准：</p>
+<table>
+  <tr><th>层</th><th>内容</th><th>编码</th><th>分辨率</th></tr>
+  <tr><td>背景</td><td>纸、阴影、插图</td><td>JPEG / JPEG2000（低码率）</td><td>1/3</td></tr>
+  <tr><td>文字</td><td>笔画</td><td>1bit 蒙版，无损 Flate</td><td>全分辨率</td></tr>
+  <tr><td>墨色</td><td>实测的笔画平均色</td><td>填充色，随蒙版上色</td><td>—</td></tr>
+</table>
+<div class="box">Lumo 的 MRC 带<b>体积闸门</b>：只有当「背景 + 蒙版」真的比单层编码更小时才采用。
+这条规则让这个特性不可能让结果变差——判断错了最多是退回已经验证过的单层路径。
+蒙版极性同样由 64×64 探针在真实 PDF 渲染层上实测，而不是假设。</div>
+<div class="box">CI 实测（合成拍照扫描件，2 页，1654×2339@200dpi）：
+单层 JPEG <b>2,912,822 B</b> → 分层 MRC <b>78,229 B</b>，<b>省 97.3%</b>；
+产物重新光栅化后每页 std≈26.6、深色像素占比≈1.5%，即内容完好。</div>
+
+<h2>09 · 关于 JBIG2 的诚实说明</h2>
+<p>Acrobat 的单色压缩选项里有 JBIG2（有损 / 无损）。macOS 的 SDK 能<b>解码</b>
+PDF 里内嵌的 JBIG2（CoreGraphics 内部带了私有的解码库，预览 app 能打开这类文件就是证明），
+但 ImageIO <b>没有提供 JBIG2 编码器</b>——可用编码格式清单里没有它，
+系统里也没有公开可调用的编码入口。这一条不是推测，App 内置的
+<span class="mono">lumo-cli encoders</span> 会在用户的机器上现场把
+<span class="mono">CGImageDestinationCopyTypeIdentifiers()</span> 打印出来，可以自己验证。</p>
+<p>会不会因此丢掉特色？不会，理由有三：</p>
+<ul>
+  <li>JBIG2 相对 CCITT G4 的优势来自「符号字典 + 软模式匹配」，
+      官方数据是 3–5 倍；而扫描件真正的大头从来不在单色层，
+      而在<b>要不要为背景付出全分辨率码率</b>——这正是 MRC 解决的问题；</li>
+  <li>JBIG2 有损模式有众所周知的「字符替换」风险，文档场景不可接受；</li>
+  <li>Lumo 的差异点不在某个具体编码器，而在「感知 → 推荐 → 校验」这条自动工作流本身。</li>
+</ul>
+<div class="box">CI 在 macOS 14 arm64 上现场体检的结果：
+<span class="mono">CGImageDestinationCopyTypeIdentifiers()</span> 返回 <b>21 种可写格式</b>
+（<span class="mono">public.jpeg / public.jpeg-2000 / public.png / public.tiff / com.adobe.pdf …</span>），
+<span class="mono">CGImageSourceCopyTypeIdentifiers()</span> 里同样没有 JBIG2。
+换句话说：不是「我们没找到」，是系统确实没有公开这一层。</div>
+<div class="box warn">如果未来系统提供了 JBIG2 编码入口，接入只需要在单色路径里加一个分支；
+在此之前，用户选择 JBIG2 时会得到 CCITT G4，并在结果里如实注明。</div>
+<div class="box">顺带回答一个常被问到的方向问题：<b>既然不追 Acrobat 的参数表，
+macOS 原生最擅长、也最主流的算法与格式是什么？</b>答案是——单色走
+<b>CCITT Group 4</b>（传真时代就在用的无损游程编码，CoreGraphics 直接支持，
+纯文字页压完常常只剩几十字节），彩色走 <b>JPEG2000</b>（同码率下比 JPEG 更干净、
+支持无损），灰度按体积 / 兼容性在 JPEG 与 JPEG2000 之间二选一，
+<b>无损层一律 Flate</b>。这四样就是系统 SDK 的"母语"，
+不需要为了让参数看起来专业而引入任何第三方编码器。</div>
+
+<h2>10 · 验证级别与已知限制</h2>
+<h3>已验证（在真机 macOS arm64 上断言过）</h3>
+<ul>
+  <li>体检各项指标、纠偏角度往返一致性；</li>
+  <li>全流程产物重新打开、重新光栅化，逐页非空、非负片；</li>
+  <li>CCITT G4 / JPEG2000 / ZIP / 分层压缩四条编码路径；</li>
+  <li>可搜索与可编辑两种 OCR 输出、页码范围选择、产物再体检能认出自己的文字层；</li>
+  <li>自动裁边的四道闸门与透视校正——几何层用<b>显式构造的四边形</b>驱动，不与模型耦合；</li>
+  <li>更新器：版本比较、校验（哈希 / 签名 / 缺签名拒绝）、原地替换与失败回滚、下载全链路；
+      另有一条端到端用例：起一个假的更新源，真的从旧版本升到新版本。</li>
+</ul>
+<h3>未验证 / 需要真机确认</h3>
+<ul>
+  <li>DMG 在 macOS 13 上的实际表现。CI 在 macOS 14 与 26 两代系统上验证过，13 没有实机跑过；</li>
+  <li>第三方阅读器（Chrome、Acrobat）对分层压缩页的合成效果，自检只用系统渲染器验证；</li>
+  <li>Vision 识别质量在真实（非合成）扫描件上的表现；</li>
+  <li>自动裁边只在<b>合成件</b>上验证过：桌面、纸张、光照都是合成出来的。
+      手指入镜、装订侧阴影、纸张卷曲、多张纸叠放都还没测过。</li>
+</ul>
+<h3>已知限制</h3>
+<ul>
+  <li>OCR 语言由系统提供，语言清单随 macOS 版本变化；</li>
+  <li>没有 JBIG2 编码（原因见 09 节）；</li>
+  <li>分层压缩只对「非单色、含文字」的页面生效，纯图片页仍走 JPEG/JPEG2000；</li>
+  <li>Flate（ZIP 无损）不使用 PNG 预测器：PDF 的 /Predictor 与 PNG 文件格式语义不同，
+      同一份像素实测「无预测器 215 / Predictor 12: 41 / Predictor 2: 190」（对比度，越高越正确），
+      因此选择不用。代价是 ZIP 模式体积比理论值大 20%~40%，换来「一定能打开」；</li>
+  <li>不支持 PDF 加密文件与表单域的改写。</li>
+</ul>
+
+<h2>11 · 设计取舍记录</h2>
+<p>这一节只记一类东西：<b>看起来可以随便选、其实被实测否掉过别的选项</b>的地方。
+结论容易抄，理由抄不走——而只看到结论的人，会理所当然地把它「优化」回那个已经被证伪的选项。
+这就是本节存在的唯一理由。</p>
+
+<h3>0.0.2</h3>
+<table>
+  <tr><th>项</th><th>取舍</th><th>依据</th></tr>
+  <tr><td>标识的形状与构图</td>
+      <td><b>方底座</b>（1 : 1）+ 左上角一束<b>纵向拉长</b>的星芒。试过竖版底座，否掉了</td>
+      <td>竖版底座的问题不在好看与否，而在<b>它和图标不是同一个形状</b>：
+      macOS 的图标槽位是正方形，于是同一个标识在桌面和窗口里长得不一样，
+      又要多写一段"这是平台约束、不算走样"来解释。方形底座让图标、欢迎页、
+      关于页、README 的 logo 是同一份几何，这个解释成本直接消失。<br>
+      星芒偏到左上、并纵向拉长，则是因为：正四角星居中会读成一个「点」，
+      没有方向；偏置加上拉长之后，右下的留白才成为画面的一部分</td></tr>
+  <tr><td>顶部不再有品牌</td>
+      <td>连标识带「Lumo」字样一起<b>从窗口顶部移走</b>，只留在欢迎页中央</td>
+      <td>顶部放一个偏置构图的标识最尴尬：它小到看不清构图，却仍然占着一行高度。
+      一个 App 有一处大标识就够了</td></tr>
+  <tr><td>欢迎页的虚线框</td>
+      <td>去掉那圈<b>常驻</b>的虚线框，改成"文件真的拖进来时才亮一下"</td>
+      <td>常驻的框会让欢迎页读成一个空表单，而不是"随时可以放东西进来"的画面。
+      反馈应当只在需要时出现</td></tr>
+  <tr><td>发布说明的来源</td>
+      <td>Release 正文<b>从 CHANGELOG 抽</b>，不用 GitHub 的自动生成</td>
+      <td>自动生成只列合并的 PR——实测出现过整篇发布说明只有一条机器人依赖升级、
+      真正的改动一条都没有。发布说明是给下载的人看的，它必须来自一处
+      按「用户能感知的变化」写的地方</td></tr>
+  <tr><td>顶部那一栏</td>
+      <td><b>整条去掉</b>：不留材质底、不留分隔线，只留一个标识 + 一个词标</td>
+      <td>去掉之后才看出来，原来那一栏的视觉重量有相当一部分来自那条 1px 分隔线。
+      顶栏本来还承担「放设置按钮」的职责，那个职责挪到右下角更合理——
+      右下角是「全局动作」的常规位置，而顶栏那块地方应该留给内容</td></tr>
+  <tr><td>空态文案</td>
+      <td>删掉两行：流水线四段式的一句话、以及一排快捷键提示</td>
+      <td>「感知 → 增强 → 识别 → 压缩」是<b>内部</b>的说法，用户在那个时刻并不需要它；
+      快捷键在菜单里都有，堆在首屏只会让「该点哪个」变得不清楚</td></tr>
+  <tr><td>界面语言</td>
+      <td>中 / 英双语，默认跟随系统</td>
+      <td>英文界面用一张「中文原文 → 英文」的表，不做 .lproj：
+      本项目的 .app 是手工组装的，没有 SwiftPM 资源包那条链路，
+      引 .lproj 要动打包脚本、还要多一条「资源有没有拷进包里」的断言。
+      中文侧不维护副本（查不到就原样返回），英文侧漏翻由 CI 拦住</td></tr>
+</table>
+
+<h3>0.0.1 · 首个公开版本</h3>
+<table>
+  <tr><th>项</th><th>取舍</th><th>依据</th></tr>
+  <tr><td>增强模式</td>
+      <td>收敛成 <b>5 个模式</b>（自动增强 / 增强 / 黑白 / 对比度 / 原图），
+      不照搬同类产品的 8 个</td>
+      <td>用户想选的是<b>效果</b>，不是滤镜。模式名直接说结果——
+      「彩色增强」其实在说"你要不要彩色"，「黑白增强」的"增强"二字是多余的</td></tr>
+  <tr><td>黑白档的阈值算法</td>
+      <td>局部均值 × 0.90。<b>不用</b>学术上更常见的 Sauvola</td>
+      <td>逐像素对照过两套算法：Sauvola(k=0.34, R=128) 在光照渐变页上把亮侧整片抹白，
+      根因是 R=128 按高对比度文档标定、与真实扫描件的 σ 量纲不符；
+      把 k 压到 0.10 能救，但<b>退化成与局部均值算法逐像素相同</b>。
+      ——「更学术」不构成换算法的理由，实测才构成</td></tr>
+  <tr><td>单色编码</td>
+      <td>CCITT G4（单色）/ JPEG2000（彩色）/ Flate（无损）——
+      直接落在系统 SDK 的「母语」上</td>
+      <td>JBIG2 的压缩率更好，但它<b>没有公开编码器</b>（实测，不是推测）。
+      为参数好看去引一个第三方编码器，与本项目「零第三方依赖」的前提直接冲突</td></tr>
+  <tr><td>处理分辨率</td>
+      <td>只降不升</td>
+      <td>源件只有 150 dpi 时，重采样到 200 dpi 不会变清晰，
+      只会凭空多出 78% 的像素</td></tr>
+  <tr><td>内容守卫</td>
+      <td>每个滤镜过完都检查一次直方图对比度，掉到原图 60% 以下就放弃该滤镜</td>
+      <td>增强滤镜的失败方式是「画面变干净了、内容也没了」。这个方向不可逆，
+      所以宁可留着脏，也不能把内容洗掉</td></tr>
+  <tr><td>内存</td>
+      <td>手写流式 PDF 写入器，逐页落盘</td>
+      <td>把编码数据攒齐再写的话，几 MB 的文档处理时内存会涨到几个 GB——
+      页数不应该是内存的函数</td></tr>
+  <tr><td>自动裁边</td>
+      <td>默认<b>关闭</b></td>
+      <td>它是整条流水线里唯一会主动丢像素的一步。默认关，
+      把是否丢像素的决定留给使用的人</td></tr>
+  <tr><td>兼容性</td>
+      <td>在 macOS 14 与 26 两代系统上都验证</td>
+      <td>低版代表支持下限（<span class="mono">LSMinimumSystemVersion</span> = 13），
+      新版代表工具链上限。只在一个系统上绿，说明不了另一个——
+      实测过：同一份代码在新系统上零警告，在旧系统上会编不过</td></tr>
+</table>
+
+<div class="box">这条纪律值得单独记一笔：<b>断言本身也要被测试</b>。
+写完一条断言，要先用「故意写错的产物」跑一遍，确认它<b>会红</b>——
+否则你得到的不是保障，而是一行每次都会打印出来的、绿色的安慰语。
+本项目里出现过三种形态的假断言：恒真的往返比对、
+范围写错导致一个条目都没扫到、以及用全局均值去判一个只影响 1% 画面的异常。</div>
+
+<p class="muted" style="margin-top:18pt">© Lumo · 本文档由 Lumo 项目生成，随 App 内置发布。</p>
+
+</body>
+</html>

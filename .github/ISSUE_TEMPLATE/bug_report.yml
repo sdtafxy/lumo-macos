@@ -1,0 +1,95 @@
+name: 报告问题
+description: 报告一个 bug 或不符合预期的行为
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢花时间报告问题。
+
+        ⚠️ **动手填之前先看一眼**：`README.md` 的「已知限制」一节列了一批**已知但未解决**
+        的问题（Ed25519 验签未开启、内置设计文档封面版本号未更新、
+        真实拍照件的裁边效果未验证……）。如果你的问题是其中之一，那就不必再开 issue 了。
+
+        如果问题涉及**自动更新**，请先附上日志：
+        `~/Library/Caches/com.lumo.app/Updates/update.log`
+        —— 更新器是那种"用户说不好用、维护者什么都看不到"的功能，那个文件是唯一的诊断通道。
+
+  - type: input
+    id: version
+    attributes:
+      label: Lumo 版本
+      description: 菜单「Lumo → 关于」里能看到，或在终端跑 `lumo-cli version`
+      placeholder: "0.0.1"
+    validations:
+      required: true
+
+  - type: input
+    id: macos
+    attributes:
+      label: macOS 版本与机型
+      description: 终端跑 `sw_vers`，机型在「关于本机」里
+      placeholder: "macOS 26.6.2 / Mac mini (M1)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 出问题的部分
+      options:
+        - 界面 / 交互
+        - 增强效果（黑白、增强、对比度……）
+        - 自动裁边 / 透视校正
+        - 识别（OCR）
+        - 压缩 / 输出体积
+        - 自动更新
+        - 从命令行使用（lumo-cli）
+        - 其它
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 发生了什么
+      description: 你**期望**看到什么、实际看到什么
+      placeholder: |
+        期望：……
+        实际：……
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 越具体越好。如果只在某一份文件上出现，说明那份文件有什么特别之处
+      placeholder: |
+        1. 打开……
+        2. 把滑块拉到……
+        3. 点「开始处理」
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志 / 截图
+      description: |
+        更新相关的问题请贴 `~/Library/Caches/com.lumo.app/Updates/update.log`。
+        界面问题请附截图。
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我查过 README 的「已知限制」，这不是其中之一
+          required: true
+        - label: 这不是安全问题（安全问题请走 Security 标签页的私密报告通道）
+          required: true
