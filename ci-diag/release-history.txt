@@ -1,0 +1,6 @@
+--- v0.0.2  2026-09-19T11:36:50Z  status=success ---
+-rw-r--r--@ 1 runner  staff   2.6M Sep 19 11:36 Lumo.dmg
+8bcb932b80a2045c15f2fc9ebc2b1626ca7f3788931cdd345a202c1f09a5de78
+--- v0.0.3  2026-09-20T13:27:02Z  status=success ---
+-rw-r--r--@ 1 runner  staff   2.6M Sep 20 13:26 Lumo.dmg
+43fe255ad0ed7f90f9591a7260f6b1928c463a7a153e0bf02b522d04e4e3186d
