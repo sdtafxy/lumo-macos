@@ -112,8 +112,11 @@ public enum Compressor {
     }
 
     private static func flateMono(_ packed: Data, rowBytes: Int, width: Int, height: Int) -> Data {
-        // 不做 PNG 预测器：PDF 的 /Predictor 与 PNG 文件语义不同（行首没有 filter 字节），
-        // 实测在 CoreGraphics 下会让整幅图解码失败、渲染成空白页。宁可大一点，也不能白页。
+        // 1 位路径不做预测器，但理由和 8 位路径**不同**（那边已经改用了 /Predictor 15）：
+        // PNG 的滤波作用在**字节**上，而 1 位图是一个字节装 8 个像素，
+        // `/Columns` 又按采样数声明——滤波到底按字节还是按采样，各家阅读器做法不一致。
+        // 单色本来就由 CCITT G4 罩着（实测 G4 比 Flate 再小 1.4 倍），
+        // 为这条兜底路径去赌兼容性不划算。
         return deflate(packed) ?? packed
     }
 
@@ -211,10 +214,26 @@ public enum Compressor {
 
     private static func flateResult(_ bytes: [UInt8], rowBytes: Int, width: Int, height: Int,
                                     colors: Int, colorSpace: String, mode: String) -> EncodedImage {
-        let data = deflate(Data(bytes)) ?? Data(bytes)
+        // ★ 8 位路径走 PNG 预测器（`/Predictor 15`：逐行自选滤波方式）。
+        //
+        // 这里原来是裸 deflate，注释写着"PDF 的预测器会让整幅图解码失败"。
+        // **实测推翻了那句话**：带行首 filter 字节的 P12/P15 解回来与原始像素
+        // 逐点相同（平均像素差 0.00），而裸 deflate 那一版是最大的。
+        // 当年之所以得出相反结论，多半是用「对比度」当判据——那个判据连
+        // 错的 TIFF 预测器都放过去了（实测差 109，对比度却有 190）。
+        //
+        // 1 位的单色路径**不**用预测器：/Columns 是按采样数算的，
+        // 而 1 位是打包进字节的，各家阅读器对"滤波是按字节还是按采样"的做法不一致，
+        // 风险落在一个只有 14KB 的路径上不划算（而且单色本来就由 CCITT G4 罩着）。
+        let filtered = pngPredictorOptimumRows(bytes, rowBytes: rowBytes, height: height)
+        let payload = filtered.isEmpty ? bytes : filtered
+        let data = deflate(Data(payload)) ?? Data(payload)
+        let parms = filtered.isEmpty
+            ? nil
+            : "<< /Predictor 15 /Colors \(colors) /Columns \(width) /BitsPerComponent 8 >>"
         return EncodedImage(data: data, colorSpace: colorSpace, filter: "/FlateDecode",
                             bitsPerComponent: 8,
-                            decodeParms: nil,
+                            decodeParms: parms,
                             width: width, height: height, mode: mode, encoderUsed: "ZIP", note: nil)
     }
 

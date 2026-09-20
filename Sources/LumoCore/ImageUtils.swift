@@ -293,13 +293,17 @@ public func packOneBit(_ g: GrayBitmap, threshold: UInt8) -> Data {
     return Data(out)
 }
 
-/// PNG 的 Up 预测器（filter type 2）。PDF 的 /Predictor 12 用的就是它，
-/// 对扫描件比裸 deflate 能再省 20%~40%。
+/// PNG 的 Up 预测器（filter type 2），**不带**行首 filter 字节。
 ///
-/// 千万**不要**像 PNG 文件那样给每行补一个 filter type 字节：
-/// PDF 的预测器是「全图统一」的，行首没有那个字节。曾经补了，
-/// 后果是 Flate 图像整行错位、解码器直接放弃——表现为「ZIP 无损输出一片空白」，
-/// 蒙版层也因此完全没画上。一个字节坑掉两条路径。
+/// ⚠️ 这是**错误的** PDF 写法，只作为反例保留给 selftest 的交叉验证：
+/// 拿它写出来的 /FlateDecode 图，解回来是**乱码**（实测与正确图像的平均像素差 123）。
+///
+/// ★ 这里曾经写着「PDF 的预测器行首没有 filter 字节，补了会整页空白」——
+/// **那句话是错的**。PDF 规范的 Predictor 10–15 都是 PNG 预测器，
+/// 而行格式就是 `[filter byte][filtered bytes]`；一次带 5 种写法的实测（见 selftest）
+/// 给出的结论很干脆：带字节的 P12 / P15 逐像素差 **0.00**（完全正确），
+/// 不带字节的 P12 差 123——当年的"空白"多半是改了字节又动了别的地方，
+/// 而当时用「对比度」当判据也看不出真相（连错的 TIFF 预测器都拿到了 190 的对比度）。
 public func pngUpFilter(_ bytes: [UInt8], rowBytes: Int, height: Int) -> [UInt8] {
     guard rowBytes > 0, height > 0 else { return [] }
     var out = [UInt8]()
@@ -312,6 +316,112 @@ public func pngUpFilter(_ bytes: [UInt8], rowBytes: Int, height: Int) -> [UInt8]
             out.append(UInt8(truncatingIfNeeded: Int(v) - Int(prev[i])))
             prev[i] = v
         }
+    }
+    return out
+}
+
+/// PNG 风格预测器，**按 PDF /Predictor 15 的写法**：每行前面带一个 filter 字节。
+///
+/// 这与上面 `pngUpFilter` 的差别只有那一个字节，但它决定了哪种写法是对的。
+/// PDF 规范（ISO 32000-1 表 8）里 Predictor 10–15 都是「PNG 预测器」，
+/// 而 PNG 的行格式本身就是 `[filter byte][filtered bytes]`：
+/// **/Predictor 15 必须逐行带这个字节**（15 的含义就是"逐行自己选"）。
+/// 10–14 是"整幅固定用某一种"，各家实现对这个字节的处理并不一致——
+/// 与其照文档赌，不如两种写法都渲染出来看哪张是正常的（见 selftest 的交叉验证）。
+///
+/// `filterType` 只允许 0–4：0 None、1 Sub、2 Up、3 Average、4 Paeth。
+public func pngPredictorRows(_ bytes: [UInt8], rowBytes: Int, height: Int,
+                             filterType: UInt8 = 2) -> [UInt8] {
+    guard rowBytes > 0, height > 0 else { return [] }
+    var out = [UInt8]()
+    out.reserveCapacity(rowBytes * height + height)
+    var prev = [UInt8](repeating: 0, count: rowBytes)
+    var cur = [UInt8](repeating: 0, count: rowBytes)
+    for y in 0..<height {
+        let base = y * rowBytes
+        for i in 0..<rowBytes { cur[i] = bytes[base + i] }
+        out.append(filterType)
+        switch filterType {
+        case 1:   // Sub：减左邻
+            for i in 0..<rowBytes {
+                let left = i >= 1 ? cur[i - 1] : 0
+                out.append(UInt8(truncatingIfNeeded: Int(cur[i]) - Int(left)))
+            }
+        case 3:   // Average：减（左 + 上）/2
+            for i in 0..<rowBytes {
+                let left = i >= 1 ? Int(cur[i - 1]) : 0
+                out.append(UInt8(truncatingIfNeeded: Int(cur[i]) - (left + Int(prev[i])) / 2))
+            }
+        case 4:   // Paeth
+            for i in 0..<rowBytes {
+                let a = i >= 1 ? Int(cur[i - 1]) : 0
+                let b = Int(prev[i])
+                let c = i >= 1 ? Int(prev[i - 1]) : 0
+                let pp = a + b - c
+                let pa = abs(pp - a), pb = abs(pp - b), pc = abs(pp - c)
+                let pred = (pa <= pb && pa <= pc) ? a : (pb <= pc ? b : c)
+                out.append(UInt8(truncatingIfNeeded: Int(cur[i]) - pred))
+            }
+        default:  // 0 None / 2 Up
+            for i in 0..<rowBytes {
+                out.append(filterType == 2
+                           ? UInt8(truncatingIfNeeded: Int(cur[i]) - Int(prev[i]))
+                           : cur[i])
+            }
+        }
+        prev = cur
+    }
+    return out
+}
+
+/// 逐行自选滤波方式的 PNG 预测器（PDF `/Predictor 15` 的真实含义），
+/// 每行按 PNG 的经典启发式挑一种：**把滤波后的字节当作有符号数求和，
+/// 取绝对值之和最小的那一种**。这是 PNG 编码器通用的做法，
+/// 对扫描件（大片渐变 + 硬边）通常比固定用 Up 再省一档。
+///
+/// 行格式严格按 PNG：`[filter byte][filtered bytes...]`。
+public func pngPredictorOptimumRows(_ bytes: [UInt8], rowBytes: Int, height: Int) -> [UInt8] {
+    guard rowBytes > 0, height > 0 else { return [] }
+    var out = [UInt8]()
+    out.reserveCapacity(rowBytes * height + height)
+    var prev = [UInt8](repeating: 0, count: rowBytes)
+    var cur = [UInt8](repeating: 0, count: rowBytes)
+    var best: [UInt8] = []
+    for y in 0..<height {
+        let base = y * rowBytes
+        for i in 0..<rowBytes { cur[i] = bytes[base + i] }
+        var bestType: UInt8 = 0
+        var bestScore = Int.max
+        for t in UInt8(0)...4 {
+            var cand = [UInt8](repeating: 0, count: rowBytes)
+            var score = 0
+            for i in 0..<rowBytes {
+                let a = i >= 1 ? Int(cur[i - 1]) : 0
+                let b = Int(prev[i])
+                let c = i >= 1 ? Int(prev[i - 1]) : 0
+                let pred: Int
+                switch t {
+                case 1:  pred = a
+                case 2:  pred = b
+                case 3:  pred = (a + b) / 2
+                case 4:
+                    let pp = a + b - c
+                    let pa = abs(pp - a), pb = abs(pp - b), pc = abs(pp - c)
+                    pred = (pa <= pb && pa <= pc) ? a : (pb <= pc ? b : c)
+                default: pred = 0
+                }
+                let v = UInt8(truncatingIfNeeded: Int(cur[i]) - pred)
+                cand[i] = v
+                // 有符号解释，取绝对值——PNG 规范的启发式
+                score += abs(v < 128 ? Int(v) : Int(v) - 256)
+            }
+            if score < bestScore {
+                bestScore = score; bestType = t; best = cand
+            }
+        }
+        out.append(bestType)
+        out.append(contentsOf: best)
+        prev = cur
     }
     return out
 }

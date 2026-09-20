@@ -37,7 +37,13 @@ enum LumoDesign {
     /// —— 它就来自应用图标渐变里已有的那个亮端。
     static let accentFresh = Color(hex: 0x34D399)
     /// 星芒墨色。固定在青绿渐变方块上使用，换色就跟应用图标不是同一个东西了。
-    static let emblemInk   = Color(hex: 0x04201C)
+    /// 星芒的填充色。**纯白**，不是深墨绿。
+    ///
+    /// 早先这里是 #04201C（深墨绿，当年叫 emblemInk）。深色小块压在底座偏上的位置，
+    /// 整枚标识会读成"一张脸 + 一只眼睛/一道疤"——这不是审美挑剔，是形状心理学：
+    /// 深色小斑块 + 圆角方底 + 偏上偏左，就是脸的构型。
+    /// 换成白之后它从"暗块"变成"高光"，也才对得上名字——流明是光通量的单位。
+    static let emblemStar  = Color.white
     /// 强调色上的文字（青绿底 + 深墨字，对比度达 WCAG AA）
     static let onAccent    = Color(hex: 0x04201C)
 
@@ -158,29 +164,29 @@ enum LumoDesign {
 
     // MARK: - 品牌标识
 
-    /// 品牌标识：**一方底座 + 左上角一束光**。
+    /// 品牌标识：**一方底座 + 一颗偏左的白色星芒**。
     ///
-    /// 构图（所有数字都按标识边长取比例，换任何尺寸都不走样）：
+    /// 构图（所有数字都按标识的边长取比例，换任何尺寸都不走样）：
     ///
     ///     ┌────────────────┐
-    ///     │ ✦              │   星芒宽 0.30 × 边长
-    ///     │                │   纵向拉长 2.00 倍（高 / 宽）
-    ///     │                │   左上留白 0.18 / 0.125 × 边长
-    ///     │                │   圆角 0.26 × 边长
-    ///     │                │
-    ///     └────────────────┘   右下的空白是**有意的**
+    ///     │                │   星芒 0.28 × 边长（**正四角，不拉长**）
+    ///     │  ✦             │   左留白 0.13 × 边长
+    ///     │                │   纵向居中
+    ///     └────────────────┘   圆角 0.26 × 边长
     ///
-    /// 几个"为什么"：
-    ///   · **为什么星芒在左上角**：它是这枚标识里唯一的动词。放正中最稳，也最没有表情；
-    ///     偏到左上之后，右下的空白才成为画面的一部分——**留白在讲"这一页还灰着"，
-    ///     星芒在讲"这里被点亮了"**，两者合起来才是这个产品在做的事。
-    ///   · **为什么星芒纵向拉长**（1 : 2.00 的半径比）：正四角星放在方形里会读成一个
-    ///     "点"；拉长之后它才成为一束有方向的光。拉长必须靠**手绘路径**，
-    ///     把字形拉一下缩放会让笔画一起变粗、四个尖一起钝掉（见 `LumoStar`）。
-    ///   · **为什么底座是正方形**：这是刻意的取舍。macOS 的图标槽位是正方形，
-    ///     底座做成竖版的话，同一个标识在桌面（方形）和窗口里（竖版）就是两种形状，
-    ///     又回到"这个 App 有两个 logo"的老问题。方形底座让**图标、欢迎页、关于页、
-    ///     README 里的 logo 是同一份几何**，连"平台约束导致的差异"都不需要解释。
+    /// 每一条都是被否掉一版之后才定下来的，所以都写清楚：
+    ///
+    ///   · **为什么星芒是白的**：早先是深墨绿，压在偏上的位置时整块会读成
+    ///     "一张脸 + 一只眼睛/一道疤"。改白之后它从"暗块"变成"高光"，
+    ///     也才和名字对得上——流明是光通量的单位。
+    ///   · **为什么不再纵向拉长**：拉长到过 2.00 倍，细得像一根针；1.65 / 1.45 也试过。
+    ///     最后回到 **1 : 1**：正四角星的比例本身是被设计过的，硬拉两头不讨好。
+    ///   · **为什么偏左、但纵向必须居中**：偏左让右侧的留白成为画面的一部分
+    ///     （像"标记 + 预留文字位"的排版），比正中最稳的摆法多一点方向感。
+    ///     但横向偏移一定要配纵向居中——早先是偏在左上角，重心就歪了。
+    ///   · **为什么底座是正方形**：macOS 的图标槽位就是正方形。底座做成竖版的话，
+    ///     同一个标识在桌面和窗口里就是两种形状，又回到"这个 App 有两个 logo"。
+    ///     方形底座让**图标、欢迎页、关于页、README 里的 logo 是同一份几何**。
     ///
     /// ★ 这里是视觉的唯一基准。`Resources/Lumo.icns` 与 `docs/logo.png` 都由
     ///   `Scripts/make_icon.py` 生成，那边的常量照着本结构写，两边文件头互相注明。
@@ -190,26 +196,21 @@ enum LumoDesign {
 
         /// 圆角 / 边长。0.30 往上开始像胶囊，0.26 才是"一方底座"。
         static let cornerRatio: CGFloat = 0.26
-        /// 星芒宽 / 边长。
-        static let starWidthRatio: CGFloat = 0.30
-        /// 星芒的 高 / 宽。**纵向拉长就是这个数**（1 才是正四角星）。
-        static let starElongation: CGFloat = 2.00
-        /// 星芒左留白 / 边长。
-        static let starInsetLeft: CGFloat = 0.18
-        /// 星芒上留白 / 边长。
-        /// 比左留白小：星芒的上下是两个细尖、视觉份量轻，不需要和两侧等量的留白。
-        static let starInsetTop: CGFloat = 0.125
+        /// 星芒边长 / 标识边长。**高宽同值**——这里没有"拉长"这个旋钮，
+        /// 想拉长就得先改回一个由两段代码共同维护的比例，那是刻意不做的。
+        static let starSizeRatio: CGFloat = 0.28
+        /// 星芒左留白 / 标识边长。比右侧小得多：偏移是构图的一部分。
+        static let starInsetLeft: CGFloat = 0.13
         /// 内顶点 / 外顶点。0.30 比默认的 1/√2 凹得更深，四个角才显得利。
         static let starInnerRatio: CGFloat = 0.30
 
-        private var starWidth: CGFloat { width * Self.starWidthRatio }
-        private var starHeight: CGFloat { starWidth * Self.starElongation }
+        private var starSize: CGFloat { width * Self.starSizeRatio }
 
         var body: some View {
             ZStack(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: width * Self.cornerRatio, style: .continuous)
                     // 注意：LumoMark 是嵌在 LumoDesign 里的类型，而嵌套类型内部看不到
-                    // 外层 enum 的静态成员——accent / emblemInk 必须写全名。
+                    // 外层 enum 的静态成员——accent / emblemStar 必须写全名。
                     // 漏掉限定词就是 "cannot find 'accent' in scope"，
                     // 而这个错**只在编 App 目标时才暴露**（编 CLI 看不出来）。
                     .fill(LinearGradient(colors: [LumoDesign.accent, Color(hex: 0x34D399)],
@@ -217,9 +218,10 @@ enum LumoDesign {
                     .frame(width: width, height: width)
 
                 LumoStar(innerRatio: Self.starInnerRatio)
-                    .fill(LumoDesign.emblemInk)
-                    .frame(width: starWidth, height: starHeight)
-                    .offset(x: width * Self.starInsetLeft, y: width * Self.starInsetTop)
+                    .fill(LumoDesign.emblemStar)
+                    .frame(width: starSize, height: starSize)   // ← 两边同值 = 不拉长
+                    // 纵向居中由几何推出来，不写死数字：以后换尺寸时重心不会歪。
+                    .offset(x: width * Self.starInsetLeft, y: (width - starSize) / 2)
             }
             .accessibilityHidden(true)   // 装饰性图形，读屏不需要念它
         }
@@ -469,10 +471,12 @@ func lumoBytes(_ b: Int) -> String {
 
 /// 四角星芒。
 ///
-/// 横竖两个方向的半径**分开给**：「纵向拉长」不能靠把字体里的 ✦ 拉一下比例——
-/// 那样笔画会跟着变粗、四个尖也一起钝掉。手绘路径才能让"细长"是真的细长。
+/// 横竖两个半径**分别取 frame 的宽和高**：传一个正方形 frame 就是正四角星
+/// （现在用的就是这个），传一个竖长 frame 就是拉长版。
+/// 之所以是手绘路径而不是字体里的 ✦ 字符：字符只能整体缩放，
+/// 一旦两个方向要给不同的值，笔画会跟着变粗、四个尖也一起钝掉。
 ///
-/// 构造与 `Scripts/make_icon.py` 的 `star()` 完全同构：四个外顶点指向
+/// 构造与 `Scripts/make_icon.py` 的 `star_pts()` 完全同构：四个外顶点指向
 /// 正上 / 右 / 下 / 左，四个内凹点落在对角线上（所以乘 1/√2 投影）。
 struct LumoStar: Shape {
     /// 内顶点 / 外顶点。

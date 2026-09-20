@@ -464,27 +464,76 @@ func selftest() -> Int32 {
         } else {
             check(false, "deflate 出流")
         }
-        func variant(_ p: Int?) -> Double {
-            var payload = Data(raw)
+        /// 同一份像素、不同的 /Predictor 写法各写一份 PDF，渲染回来。
+        /// 返回 (灰度像素, 压缩后字节数)。
+        func variant(_ p: Int?, filterByte: Bool, tag: String) -> ([UInt8], Int)? {
+            var payload = raw
             var dp: String? = nil
             if let p {
-                if p >= 10 { payload = Data(pngUpFilter(raw, rowBytes: w * 3, height: h)) }
+                if p >= 10 {
+                    payload = filterByte
+                        ? pngPredictorRows(raw, rowBytes: w * 3, height: h, filterType: 2)
+                        : pngUpFilter(raw, rowBytes: w * 3, height: h)
+                }
                 dp = Compressor.predictorParms(colors: 3, columns: w, rows: h, bits: 8, predictor: p)
             }
-            guard let z = deflate(payload) else { return -1 }
+            guard let z = deflate(Data(payload)) else { return nil }
             let enc = EncodedImage(data: z, colorSpace: "/DeviceRGB", filter: "/FlateDecode",
                                    bitsPerComponent: 8, decodeParms: dp, width: w, height: h,
                                    mode: "color", encoderUsed: "ZIP", note: nil)
-            let u = tmp.appendingPathComponent(p == nil ? "flate-none.pdf" : "flate-p\(p!).pdf")
+            let u = tmp.appendingPathComponent("flate-\(tag).pdf")
             _ = try? PDFWriter.write(pages: [OutputPage(image: enc, dpi: 72, lines: nil)], to: u, title: "flate")
             guard let d = PDFReader.open(u), let im = PDFReader.render(d, 0, dpi: 72),
-                  let g = GrayBitmap.from(im) else { return -1 }
-            return g.contrast()
+                  let g = GrayBitmap.from(im) else { return nil }
+            return (g.pixels, z.count)
         }
-        let c0 = variant(nil), c12 = variant(12), c2 = variant(2)
-        print(String(format: "  · 对比度（>20 才算有内容）：无预测器 %.0f / Predictor 12(Up) %.0f / Predictor 2(TIFF) %.0f",
-                     c0, c12, c2))
-        check(c0 > 20, "无预测器的 Flate 图能正常显示（生产路径用的就是这种）")
+
+        // ★ 判据是**逐像素差**，不是"看着有内容"：错位的写法照样能画出有对比度的东西，
+        //   只有把它和正确答案（无预测器那条）对齐比才分得清对错。
+        let base = variant(nil, filterByte: false, tag: "none")
+        func pixelDiff(_ v: ([UInt8], Int)?) -> Double? {
+            guard let v, let b = base, v.0.count == b.0.count else { return nil }
+            var sum = 0
+            for i in 0..<v.0.count { sum += abs(Int(v.0[i]) - Int(b.0[i])) }
+            return Double(sum) / Double(v.0.count)
+        }
+
+        let trials: [(String, Int?, Bool)] = [
+            ("无预测器（生产路径）", nil, false),
+            ("P12 Up，无行首字节", 12, false),
+            ("P12 Up，带行首字节", 12, true),
+            ("P15 Up，带行首字节", 15, true),
+            ("P2（TIFF）", 2, false),
+        ]
+        var results: [(name: String, bytes: Int, diff: Double)] = []
+        print("  · 写法 / 压缩后字节 / 与无预测器的平均像素差（0 附近 = 解对了）")
+        for (name, p, fb) in trials {
+            guard let r = variant(p, filterByte: fb, tag: "\(p ?? 0)-\(fb)"),
+                  let d = pixelDiff(r) else {
+                print("    \(name)：写不出来")
+                continue
+            }
+            print(String(format: "    %-22@ %7d 字节   差 %6.2f", name as NSString, r.1, d))
+            results.append((name, r.1, d))
+        }
+
+        if let b = results.first {
+            check(b.diff < 0.5, "无预测器是基准，与自身差 0（\(b.bytes) 字节）")
+            let good = results.dropFirst().filter { $0.diff < 1.0 }
+            if good.isEmpty {
+                print("    → 所有预测器写法都没能还原出同一张图，生产路径继续用无预测器")
+            } else {
+                let best = good.min { $0.bytes < $1.bytes }!
+                print("    → 能正确还原的写法里最小的是「\(best.name)」（\(best.bytes) 字节，"
+                      + "比无预测器省 \(100 - best.bytes * 100 / b.bytes)%）")
+            }
+        }
+        if let base {
+            check(base.0.contains { $0 < 60 } && base.0.contains { $0 > 200 },
+                  "无预测器的 Flate 图能正常显示（生产路径用的就是这种）")
+        } else {
+            check(false, "无预测器的 Flate 图写不出来")
+        }
     }
 
     print("==> ZIP 无损路径")
@@ -2088,6 +2137,8 @@ func printUsage() {
       lumo-cli demo <input.pdf> <outdir> [options]   # 前后对照图 + 最终 PDF
       lumo-cli flipscan       # 方向探针：逐环节测谁在镜像画面
       lumo-cli encoders       # 列出系统 ImageIO 真正支持的编解码格式
+      lumo-cli encbench <in.pdf> [--page 1] [--quality 60,70,80,90]
+                               # 同一页比各编码器：字节 / bits-per-pixel / PSNR
       lumo-cli presets        # 列出增强模式
       lumo-cli filters        # 列出可用的 Core Image 滤镜
       lumo-cli langs
@@ -2123,6 +2174,116 @@ func cmdReport(_ path: String) -> Int32 {
         print("error: \(error.localizedDescription)")
         return 1
     }
+}
+
+/// 把编码结果解回来（JPEG / JPEG2000 都是 ImageIO 能直接读的完整文件）。
+func decodeImage(_ data: Data) -> CGImage? {
+    guard let src = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+    return CGImageSourceCreateImageAtIndex(src, 0, nil)
+}
+
+/// 统一到 8 位灰阶，供逐像素比较用。
+func grayBytes(_ img: CGImage, w: Int, h: Int) -> [UInt8]? {
+    var buf = [UInt8](repeating: 0, count: w * h)
+    guard let ctx = CGContext(data: &buf, width: w, height: h, bitsPerComponent: 8,
+                              bytesPerRow: w, space: CGColorSpaceCreateDeviceGray(),
+                              bitmapInfo: CGImageAlphaInfo.none.rawValue) else { return nil }
+    ctx.draw(img, in: CGRect(x: 0, y: 0, width: w, height: h))
+    return buf
+}
+
+/// 全图 PSNR。**只用来比较编码器**，不要拿它当画质结论：
+/// 它是全图平均，对「文字边缘糊了」这种局部退化并不敏感——
+/// 判断画质要看原图对照，或者上 SSIM。
+func psnrValue(_ a: CGImage, _ b: CGImage) -> Double? {
+    let w = min(a.width, b.width), h = min(a.height, b.height)
+    guard w > 0, h > 0,
+          let ga = grayBytes(a, w: w, h: h), let gb = grayBytes(b, w: w, h: h) else { return nil }
+    var mse = 0.0
+    for i in 0..<(w * h) {
+        let d = Double(ga[i]) - Double(gb[i])
+        mse += d * d
+    }
+    mse /= Double(w * h)
+    return mse == 0 ? .infinity : 10 * log10(255.0 * 255.0 / mse)
+}
+
+/// 编码器实测对比：同一页、同一质量下，谁更小、谁更保真。
+///
+/// 为什么值得单开一个命令：这个项目的纪律是「更学术不是换算法的理由，实测才是」。
+/// 压缩器的默认值同样该由实测决定，而且**要能在任何人的机器上重跑**——
+/// 不能只在文档里写一句"我们测过了"。换机器、换 macOS 版本，结论可能就不一样。
+///
+/// 保真度用 PSNR（把编码结果解回来和编码前的位图逐像素比）。
+/// Flate / CCITT 是无损的，直接标 lossless——它们与阈值化后的位图逐位相同。
+func cmdEncBench(_ args: [String]) -> Int32 {
+    guard let src = args.first, !src.hasPrefix("--") else {
+        print("用法：lumo-cli encbench <input.pdf> [--page 1] [--dpi 150] [--quality 60,70,80,90]")
+        return 2
+    }
+    func value(_ flag: String, _ def: String) -> String {
+        guard let i = args.firstIndex(of: flag), i + 1 < args.count else { return def }
+        return args[i + 1]
+    }
+    let page = Int(value("--page", "1")) ?? 1
+    let dpi = Int(value("--dpi", "150")) ?? 150
+    let qualities = value("--quality", "60,70,80,90")
+        .split(separator: ",").compactMap { Int($0) }
+    guard let doc = PDFReader.open(URL(fileURLWithPath: src)),
+          let img = PDFReader.render(doc, page - 1, dpi: dpi) else {
+        print("error: 打不开或渲染不了 \(src) 第 \(page) 页")
+        return 1
+    }
+
+    // 先问"这一页会被判成彩色 / 灰阶 / 单色"——候选编码器取决于它。
+    var base = CompressSpec(adaptive: true, colorMode: "auto",
+                            colorEncoder: "jpeg", monoEncoder: "ccitt", quality: 72)
+    let mode = Compressor.effectiveMode(img, base)
+    let rawBytes = img.width * img.height * (mode == "color" ? 3 : 1)
+    print("输入：\(src) 第 \(page) 页   \(img.width)×\(img.height)   dpi=\(dpi)   mode=\(mode)")
+    print("未压缩位图：\(rawBytes) 字节")
+    print("")
+
+    let candidates: [(String, String)] = mode == "mono"
+        ? [("CCITT G4", "ccitt"), ("Flate", "zip")]
+        : [("JPEG", "jpeg"), ("JPEG 2000", "jp2"), ("Flate", "zip")]
+
+    var rows: [(encoder: String, q: Int, bytes: Int, psnr: Double?)] = []
+    for (name, enc) in candidates {
+        // 无损编码器与 quality 无关，只跑一次
+        let qs = enc == "zip" ? [(qualities.first ?? 72)] : qualities
+        for q in qs {
+            base.colorEncoder = enc
+            base.monoEncoder = enc
+            base.quality = q
+            let r = Compressor.encode(img, base)
+            var ps: Double? = nil
+            if enc != "zip", let back = decodeImage(r.data) { ps = psnrValue(img, back) }
+            rows.append((name, q, r.data.count, ps))
+        }
+    }
+
+    let best = rows.map(\.bytes).min() ?? 1
+    print("编码器        质量     字节        bits/px   PSNR(dB)   相对最小")
+    for r in rows {
+        let bpp = Double(r.bytes) * 8.0 / Double(img.width * img.height)
+        let ps = r.psnr.map { $0.isInfinite ? "lossless" : String(format: "%6.2f", $0) } ?? "     —"
+        print(String(format: "%-12@  %3d  %9d  %7.3f   %@   %5.2f×",
+                     r.encoder as NSString, r.q, r.bytes, bpp, ps as NSString,
+                     Double(r.bytes) / Double(best)))
+    }
+    print("")
+    // 同一质量档下谁最小——这才是"同条件下谁更强"，而不是拿一个编码的低质量
+    // 去比另一个的高质量。
+    for q in qualities {
+        let same = rows.filter { $0.q == q }
+        guard same.count > 1 else { continue }
+        let win = same.min { $0.bytes < $1.bytes }!
+        print("质量 \(q)：最小的是 \(win.encoder)（\(win.bytes) 字节）")
+    }
+    print("")
+    print("提示：比较时**看 PSNR 相近的那两行**——同样保真度下谁的字节少，谁才是更好的编码器。")
+    return 0
 }
 
 func cmdProcess(_ args: [String]) -> Int32 {
@@ -2217,6 +2378,8 @@ case "monoprobe":
         print("→ PDF 路径未翻转")
     }
     exit(0)
+case "encbench":
+    exit(cmdEncBench(Array(argv.dropFirst())))
 case "encoders":
     // 「macOS SDK 到底能不能压 JBIG2」这件事，与其靠记忆下结论，不如现场问一次系统。
     // CGImageDestinationCopyTypeIdentifiers 就是 ImageIO 能写的全部格式清单。
@@ -2234,6 +2397,21 @@ case "encoders":
     }
     let pdfish = write.filter { $0.contains("pdf") || $0.contains("tiff") || $0.contains("jpeg") || $0.contains("png") }
     print("→ 我们实际用到的写入格式：\(pdfish.joined(separator: ", "))")
+    // 「系统能编码」不等于「能放进 PDF」。PDF 的图像流只认那么几个滤镜，
+    // 少了这一层判断就会去追 HEIC / AVIF，追到一半才发现写进去没人认识。
+    print("")
+    print("→ 能作为 PDF 图像流的滤镜只有：DCTDecode(JPEG) / JPXDecode(JPEG 2000) / "
+          + "CCITTFaxDecode(G3/G4) / JBIG2Decode / FlateDecode / LZWDecode / RunLengthDecode")
+    let unusable = write.filter {
+        let t = $0.lowercased()
+        return t.contains("heic") || t.contains("avif") || t.contains("webp")
+            || t.contains("jxl") || t.contains("ktx") || t.contains("exr")
+            || t.contains("gif") || t.contains("bmp") || t.contains("ico")
+    }
+    if !unusable.isEmpty {
+        print("→ 系统能编码、但 PDF 里没有对应滤镜（因此在本项目里用不了）：")
+        for t in unusable { print("     \(t)") }
+    }
     exit(0)
 case "presets":
     for p in EnhancePreset.allCases { print("\(p.rawValue)\t\(p.title)\t\(p.desc)") }

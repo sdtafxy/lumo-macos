@@ -341,7 +341,12 @@ final class UpdateService: ObservableObject {
                 expectedDigest: info.digestSHA256,
                 signingPublicKey: config.publicKey.isEmpty ? nil : config.publicKey,
                 to: dest,
-                progress: { p in
+                // ⚠️ 外层闭包也要显式 [weak self]。
+                // 只在内层 Task 写 [weak self]、外层不说，会在 Xcode 27 的 Swift 6.4 下报
+                // "'weak' ownership of capture 'self' differs from implicitly-captured strong
+                // reference in outer scope"——**这条项目本来是零警告的**，是升工具链之后
+                // 冒出来的新诊断。修法就是把两层的捕获意图写一致，别让它去猜。
+                progress: { [weak self] p in
                     // 回调在别的线程上，回到主 actor 再改状态
                     Task { @MainActor [weak self] in
                         guard let s = self, case .downloading = s.state else { return }

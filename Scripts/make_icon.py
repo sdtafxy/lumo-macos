@@ -31,14 +31,17 @@ DOCS_LOGO = os.path.join(os.path.dirname(__file__), "..", "docs", "logo.png")
 # ---- 唯一基准：与 LumoDesign.LumoMark 逐项对应（改这里，两边一起变） ----
 GRAD_START = (0x14, 0xB8, 0xA6)   # #14B8A6 accent
 GRAD_END   = (0x34, 0xD3, 0x99)   # #34D399
-STAR_INK   = (0x04, 0x20, 0x1C)   # #04201C emblemInk 深墨绿
+STAR_FILL  = (0xFF, 0xFF, 0xFF)   # #FFFFFF emblemStar 纯白
 
-CORNER_RATIO = 0.26        # 圆角 / 宽
-STAR_W_RATIO = 0.30        # 星芒宽 / 边长
-STAR_ELONGATION = 2.00     # 星芒 高 / 宽 —— 「纵向拉长」就是这个数
-STAR_INSET_L = 0.18        # 星芒左留白 / 边长
-STAR_INSET_T = 0.125       # 星芒上留白 / 边长（比左留白小：上下是两个细尖）
+CORNER_RATIO = 0.26        # 圆角 / 边长
+STAR_SIZE_RATIO = 0.28     # 星芒边长 / 边长（**高宽同值 = 正四角，不拉长**）
+STAR_INSET_L = 0.13        # 星芒左留白 / 边长（比右侧小得多：偏移是构图的一部分）
 STAR_INNER_RATIO = 0.30    # 内顶点 / 外顶点
+
+# 注意这里**没有**"纵向拉长"这个旋钮，也**没有**上留白：
+# 星芒是正四角（高=宽），垂直位置由几何推出来（居中）。
+# 曾经的深墨绿 + 纵向拉长 2.00 + 偏在左上角，读起来像"一张脸上一道疤"，
+# 三样一起改掉之后既不像疤、重心也正了。
 
 # 画布一律**正方形**：图标、欢迎页、关于页、README 里的 logo 是同一份几何。
 # （曾经把底座做成竖版过，代价是同一个标识在桌面和窗口里是两种形状——
@@ -68,14 +71,17 @@ def star_pts(cx, cy, rx, ry, inner=STAR_INNER_RATIO):
 
 
 def star_box(unit: float):
-    """星芒的包围盒 (x, y, w, h)，全部按给定"宽度基准"取比例。
+    """星芒的包围盒 (x, y, w, h)，全部按给定"边长基准"取比例。
+
+    · 高 = 宽 → **正四角星**，不拉长；
+    · 纵向居中由几何推出来（`(unit - w) / 2`）而不是一个独立的常量——
+      这样"不拉长"和"纵向居中"就不可能只改一半。
 
     ★ 统一用 `unit` 这一个量做基准（而不是宽用一个、高用另一个），
       所以任何尺寸、任何画布比例下构图都不会走样。
     """
-    w = unit * STAR_W_RATIO
-    h = w * STAR_ELONGATION
-    return unit * STAR_INSET_L, unit * STAR_INSET_T, w, h
+    w = unit * STAR_SIZE_RATIO
+    return unit * STAR_INSET_L, (unit - w) / 2, w, w
 
 
 def diagonal_gradient(w: int, h: int) -> Image.Image:
@@ -105,7 +111,7 @@ def draw(size: int) -> Image.Image:
 
     x, y, w, h = star_box(size)
     ImageDraw.Draw(img).polygon(star_pts(x + w / 2, y + h / 2, w / 2, h / 2),
-                                fill=STAR_INK + (255,))
+                                fill=STAR_FILL + (255,))
     img.putalpha(mask)   # mask 是 L 模式的圆角形状，直接当 alpha
     return img
 
@@ -126,7 +132,7 @@ def draw_mark(width: int) -> Image.Image:
 
     x, y, w, hh = star_box(width)
     ImageDraw.Draw(img).polygon(star_pts(x + w / 2, y + hh / 2, w / 2, hh / 2),
-                                fill=STAR_INK + (255,))
+                                fill=STAR_FILL + (255,))
     img.putalpha(mask)
     return img
 
@@ -220,39 +226,42 @@ def verify(path: str) -> int:
     big = Image.open(io.BytesIO(dict(seen)[b"ic10"])).convert("RGBA")
     W, _ = big.size
 
-    def ink_bbox(im):
-        """扫出"墨色"像素的包围盒 —— 也就是星芒实际落在哪、多大。
+    def star_bbox(im):
+        """扫出**白色**像素的包围盒 —— 星芒实际落在哪、多大。
 
-        用通道差值 + 阈值做成 mask 再取 bbox（逐像素跑 Python 循环太慢）。
+        注意判据是"接近纯白"而不是"接近某个深色"：星芒从深墨绿改成白色之后，
+        这里要是没跟着改，断言会变成"找不到星芒"而红。
+        用通道差值 + 阈值做 mask 再 getbbox()，别逐像素跑 Python 循环（1024² 太慢）。
         """
         from PIL import ImageChops
-        ref = Image.new("RGB", im.size, STAR_INK)
+        ref = Image.new("RGB", im.size, STAR_FILL)
         diff = ImageChops.difference(im.convert("RGB"), ref).convert("L")
         hit = diff.point(lambda v: 255 if v <= 30 else 0)
         alpha = im.split()[3].point(lambda v: 255 if v > 200 else 0)
         return ImageChops.multiply(hit, alpha).getbbox()
 
     def check_star(im, unit, what):
-        """星芒的几何：位置（左上）、纵向拉长、以及"它确实不在正中间"。"""
-        box = ink_bbox(im)
+        """星芒的几何：偏左、正四角、纵向居中，以及"它确实不在正中间"。"""
+        box = star_bbox(im)
         if box is None:
-            ck(False, f"{what}：找不到星芒（全画面没有墨色像素）")
+            ck(False, f"{what}：找不到星芒（画面上没有接近纯白的像素）")
             return
         x0, y0, x1, y1 = box
         bw, bh = x1 - x0, y1 - y0
         ck(abs(x0 - STAR_INSET_L * unit) <= 0.02 * unit,
-           f"{what}：星芒左边距 {x0}px（期望 {STAR_INSET_L * unit:.0f}px）—— 落在左上角")
-        ck(abs(y0 - STAR_INSET_T * unit) <= 0.02 * unit,
-           f"{what}：星芒上边距 {y0}px（期望 {STAR_INSET_T * unit:.0f}px）")
-        ck(abs(bh / bw - STAR_ELONGATION) <= 0.08,
-           f"{what}：星芒 高/宽 = {bh / bw:.2f}（期望 {STAR_ELONGATION}，>1 才是纵向拉长）")
-        ck(bw <= unit * 0.45, f"{what}：星芒宽 {bw}px 只占画布 {bw / unit:.0%}，没有撑满")
-        # ★ 这一条是"星芒偏到左上"这个设计的核心断言：
-        #   画面正中必须是**渐变**，不能是墨色。星芒要是被挪回中心，它就红。
+           f"{what}：星芒左边距 {x0}px（期望 {STAR_INSET_L * unit:.0f}px）—— 偏左")
+        ck(abs(bw - bh) <= max(2, 0.02 * unit),
+           f"{what}：星芒是正四角（宽 {bw} × 高 {bh}）—— 没有拉长")
+        cy = (y0 + y1) / 2
+        ck(abs(cy - unit / 2) <= 0.02 * unit,
+           f"{what}：星芒纵向居中（中心 {cy:.0f}px，画布中线 {unit / 2:.0f}px）")
+        ck(x1 < unit * 0.5,
+           f"{what}：星芒没有越过中线（右缘 {x1}px < {unit * 0.5:.0f}px）")
+        # ★ 这一条钉住"偏左"这个构图：画面正中必须是渐变，不能是星芒。
         cr, cg, cb, ca = im.getpixel((im.size[0] // 2, im.size[1] // 2))
-        is_ink = abs(cr - STAR_INK[0]) <= 30 and abs(cg - STAR_INK[1]) <= 30 and abs(cb - STAR_INK[2]) <= 30
-        ck(not is_ink and ca > 250,
-           f"{what}：正中心是渐变而非星芒（实测 RGB{(cr, cg, cb)}）—— 星芒在左上，不在中间")
+        is_star = cr > 240 and cg > 240 and cb > 240
+        ck(not is_star and ca > 250,
+           f"{what}：正中心是渐变而非星芒（实测 RGB{(cr, cg, cb)}）—— 星芒偏左，不在中间")
 
     check_star(big, W, "Lumo.icns")
 

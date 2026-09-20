@@ -156,8 +156,8 @@ public enum LumoText {
             "Background unevenness of %.0f%% → background removal enabled",
         "疑似半调网纹 → 启用去网纹": "Halftone screen suspected → descreen enabled",
         "轻度锐化以还原文字边缘": "Light sharpening to restore text edges",
-        "彩色文档 → 自适应压缩（文字页转单色 CCITT，插图页走 JPEG2000）":
-            "Colour document → adaptive compression (text pages to monochrome CCITT, image pages to JPEG 2000)",
+        "彩色文档 → 自适应压缩（文字页转单色 CCITT，插图页走 JPEG）":
+            "Colour document → adaptive compression (text pages to monochrome CCITT, image pages to JPEG)",
         "灰阶文档 → 自适应压缩（JPEG / CCITT）":
             "Greyscale document → adaptive compression (JPEG / CCITT)",
         "单色文档 → CCITT 组4 极限压缩":

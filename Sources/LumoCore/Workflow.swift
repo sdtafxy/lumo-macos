@@ -60,9 +60,13 @@ public enum Workflow {
         let compress: CompressSpec
         switch color {
         case "color":
+            // ★ 彩色页的编码器用 JPEG，**不用** JPEG2000。这是实测结论，不是默认值顺手抄来的：
+            // 同保真度下 JPEG 的体积只有 JPEG2000 的一半左右（示例件第 3 页：
+            // PSNR 50.5 时 JPEG 356 KB / JPEG2000 720 KB；灰阶页同样是 1.7~2 倍）。
+            // 复现命令：lumo-cli encbench <某扫描件> --page 3 --quality 60,70,80,90
             compress = CompressSpec(adaptive: true, colorMode: "auto",
-                                    colorEncoder: "jp2", monoEncoder: "ccitt", quality: 72)
-            notes.append(T("彩色文档 → 自适应压缩（文字页转单色 CCITT，插图页走 JPEG2000）"))
+                                    colorEncoder: "jpeg", monoEncoder: "ccitt", quality: 72)
+            notes.append(T("彩色文档 → 自适应压缩（文字页转单色 CCITT，插图页走 JPEG）"))
         case "gray":
             compress = CompressSpec(adaptive: true, colorMode: "auto",
                                     colorEncoder: "jpeg", monoEncoder: "ccitt", quality: 70)
@@ -100,13 +104,14 @@ public enum Workflow {
                  settings: PlanSettings(adaptive: true, colorMode: "auto",
                                         colorEncoder: "jpeg", monoEncoder: "ccitt", quality: 50)),
             Plan(id: "balanced", name: T("均衡（推荐）"), desc: T("体积与清晰度平衡"),
+                 // 三档都走 JPEG / CCITT —— 见 suggest() 里那段实测说明。
                  settings: PlanSettings(adaptive: true, colorMode: "auto",
-                                        colorEncoder: color == "color" ? "jp2" : "jpeg",
+                                        colorEncoder: "jpeg",
                                         monoEncoder: "ccitt", quality: 72),
                  recommended: true),
             Plan(id: "high", name: T("高质量"), desc: T("最大限度保留细节，体积较大"),
                  settings: PlanSettings(adaptive: false, colorMode: color,
-                                        colorEncoder: "jp2", monoEncoder: "ccitt", quality: 90)),
+                                        colorEncoder: "jpeg", monoEncoder: "ccitt", quality: 90)),
         ]
     }
 }

@@ -75,7 +75,7 @@ public enum PDFWriter {
     /// 于是 `lumo-cli version` 永远走这条兜底分支。它在 `.app` 里才走 plist。
     /// 换句话说：漏改这里，DMG 里显示 0.3.4、命令行却报 0.3.3 —— 两者都对不上。
     /// CI 里有一条断言盯着这两个数字（见 `.github/workflows/ci.yml` 的「校验版本号一致」）。
-    public static let fallbackVersion = "0.0.2"
+    public static let fallbackVersion = "0.0.3"
 
     /// 一次性写入（保留原接口，供 CLI 与自检使用）。
     ///

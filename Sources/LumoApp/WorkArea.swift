@@ -366,6 +366,11 @@ struct ParamInspector: View {
                                       options: [("JPEG", "jpeg"), ("JPEG2000", "jp2"), (T("ZIP 无损"), "zip")])
                         labeledPicker(T("单色编码"), selection: $state.monoEncoder,
                                       options: [(T("CCITT 组4"), "ccitt"), (T("ZIP 无损"), "zip")])
+                        // 给"该选哪个"一个依据。这不是在解释实现，而是用户真正要做的决定：
+                        // 三个选项都真实可用，但实测差距很大（见 `lumo-cli encbench`）。
+                        Text(T("实测：同一保真度下 JPEG 的体积约为 JPEG2000 的一半；单色页用 CCITT G4 最小。"))
+                            .font(LumoDesign.font(10.5)).foregroundColor(LumoDesign.faint)
+                            .fixedSize(horizontal: false, vertical: true)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(T("质量 %@", Int(state.quality)))
                                 .font(LumoDesign.font(12)).foregroundColor(LumoDesign.muted)

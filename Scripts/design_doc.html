@@ -92,7 +92,7 @@
   <h1>流明 · 设计文档</h1>
   <div class="sub">PDF 扫描增强 · 文本识别 · 智能压缩</div>
   <div class="meta">
-    <p><b>版本</b>　0.0.2</p>
+    <p><b>版本</b>　0.0.3</p>
     <p><b>平台</b>　macOS 13+</p>
     <p><b>形态</b>　原生 App（SwiftUI）+ 命令行工具 lumo-cli</p>
     <p><b>依赖</b>　零第三方依赖：仅 CoreGraphics / Core Image / Vision / ImageIO / zlib</p>
@@ -113,7 +113,7 @@
   <tr><td class="n">07</td><td>增强模式：从「滤镜清单」到「效果选择」</td></tr>
   <tr><td class="n">08</td><td>压缩：自适应逐页路由与分层压缩（MRC）</td></tr>
   <tr><td class="n">09</td><td>关于 JBIG2 的诚实说明</td></tr>
-  <tr><td class="n">10</td><td>验证级别与已知限制</td></tr>
+  <tr><td class="n">10</td><td>已验证与已知限制</td></tr>
   <tr><td class="n">11</td><td>设计取舍记录：为什么是这些选项</td></tr>
 </table>
 
@@ -164,42 +164,49 @@
   <li>正文 13.5pt，标题 15–20pt，数字结论 20–24pt 加粗。</li>
 </ul>
 <h3>品牌标识（App 图标与界面 Logo 是同一个东西）</h3>
-<p>标识只有一个形态：<b>青绿对角渐变的方底座，左上角一束纵向拉长的星芒</b>。
+<p>标识只有一个形态：<b>青绿对角渐变的方底座，上面一颗偏左的白色星芒</b>。
 欢迎页、关于页、打包用的 <span class="mono">Lumo.icns</span>、README 顶部的
 <span class="mono">docs/logo.png</span> 全部使用它，不允许有任何一处另起炉灶。</p>
-<p><b>构图不是"把星芒放在中间"，而是有意偏置的：</b>星芒是这枚标识里唯一的动词。
-放正中最稳，也最没有表情；偏到左上之后，右下的空白才成为画面的一部分——
-<b>留白在讲"这一页还灰着"，星芒在讲"这里被点亮了"</b>。
-所以下面那三个尺寸里，星芒的位置与比例都<b>不变</b>，只是整体缩放。</p>
+<p><b>三条硬性约定，每一条都是被否掉一版之后才定下来的：</b></p>
+<ul>
+  <li><b>星芒必须是白的。</b>早先它是深墨绿、压在偏上的位置——整枚标识会读成
+      「一张脸上一只眼睛/一道疤」。深色小斑块 + 圆角方底 + 偏上，就是这个构型。
+      换成白色之后它从「暗块」变成「高光」，也才对得上名字——流明是光通量的单位。</li>
+  <li><b>星芒是正四角，不拉长。</b>拉长到过 2.00 倍，细得像一根针；1.85 / 1.65 / 1.45 都试过。
+      正四角星的比例本身是被设计过的，硬拉两头不讨好。</li>
+  <li><b>偏左，但纵向必须居中。</b>偏左让右侧的留白成为画面的一部分
+      （像「标记 + 预留文字位」的排版）；但横向一旦偏移，纵向就<b>必须</b>居中，
+      否则重心会歪——早先偏在左上角就是这个问题。</li>
+</ul>
 <table class="markrow">
   <tr>
     <td>
       <svg width="26pt" height="26pt" viewBox="0 0 100 100">
-        <defs><linearGradient id="mg0" x1="0" y1="0" x2="1" y2="1">
+        <defs><linearGradient id="mgx0" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stop-color="#14B8A6"/><stop offset="1" stop-color="#34D399"/>
         </linearGradient></defs>
-        <rect x="0" y="0" width="100" height="100" rx="26" fill="url(#mg0)"/>
-        <path d="M33 12.5 L36.18 36.14 L48 42.5 L36.18 48.86 L33 72.5 L29.82 48.86 L18 42.5 L29.82 36.14 Z" fill="#04201C"/>
+        <rect x="0" y="0" width="100" height="100" rx="26" fill="url(#mgx0)"/>
+        <path d="M27 36 L29.97 46.03 L41 50 L29.97 53.97 L27 64 L24.03 53.97 L13 50 L24.03 46.03 Z" fill="#FFFFFF"/>
       </svg>
       <div class="muted" style="font-size:8pt">26pt</div>
     </td>
     <td>
       <svg width="56pt" height="56pt" viewBox="0 0 100 100">
-        <defs><linearGradient id="mg1" x1="0" y1="0" x2="1" y2="1">
+        <defs><linearGradient id="mgx1" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stop-color="#14B8A6"/><stop offset="1" stop-color="#34D399"/>
         </linearGradient></defs>
-        <rect x="0" y="0" width="100" height="100" rx="26" fill="url(#mg1)"/>
-        <path d="M33 12.5 L36.18 36.14 L48 42.5 L36.18 48.86 L33 72.5 L29.82 48.86 L18 42.5 L29.82 36.14 Z" fill="#04201C"/>
+        <rect x="0" y="0" width="100" height="100" rx="26" fill="url(#mgx1)"/>
+        <path d="M27 36 L29.97 46.03 L41 50 L29.97 53.97 L27 64 L24.03 53.97 L13 50 L24.03 46.03 Z" fill="#FFFFFF"/>
       </svg>
       <div class="muted" style="font-size:8pt">56pt</div>
     </td>
     <td>
       <svg width="92pt" height="92pt" viewBox="0 0 100 100">
-        <defs><linearGradient id="mg2" x1="0" y1="0" x2="1" y2="1">
+        <defs><linearGradient id="mgx2" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stop-color="#14B8A6"/><stop offset="1" stop-color="#34D399"/>
         </linearGradient></defs>
-        <rect x="0" y="0" width="100" height="100" rx="26" fill="url(#mg2)"/>
-        <path d="M33 12.5 L36.18 36.14 L48 42.5 L36.18 48.86 L33 72.5 L29.82 48.86 L18 42.5 L29.82 36.14 Z" fill="#04201C"/>
+        <rect x="0" y="0" width="100" height="100" rx="26" fill="url(#mgx2)"/>
+        <path d="M27 36 L29.97 46.03 L41 50 L29.97 53.97 L27 64 L24.03 53.97 L13 50 L24.03 46.03 Z" fill="#FFFFFF"/>
       </svg>
       <div class="muted" style="font-size:8pt">92pt</div>
     </td>
@@ -210,36 +217,31 @@
   <tr><td>渐变起</td><td class="mono">#14B8A6</td><td>左上角</td></tr>
   <tr><td>渐变止</td><td class="mono">#34D399</td><td>右下角，<b>变亮不变暗</b></td></tr>
   <tr><td>形状</td><td class="mono">1 : 1</td>
-      <td>底座做成正方形是刻意的取舍：macOS 的图标槽位就是正方形，
+      <td>正方形底座是刻意的取舍：macOS 的图标槽位就是正方形，
       底座若做成别的比例，同一个标识在桌面和窗口里就是两种形状</td></tr>
   <tr><td>圆角比</td><td class="mono">0.26</td>
       <td>圆角 / 边长。连续圆角；0.30 往上开始像胶囊，0.26 才是「一方底座」</td></tr>
   <tr><td>星芒形状</td><td>四角星（手绘路径）</td>
       <td>四个外顶点指向正上 / 右 / 下 / 左，四个内凹点落在对角线上。
-      <b>不用字符 U+2726</b>——「纵向拉长」只能靠路径，把字形缩放会让笔画一起
-      变粗、四个尖一起钝掉</td></tr>
-  <tr><td>星芒宽</td><td class="mono">0.30</td>
-      <td>星芒宽 / 边长；横向外顶点半径 = 0.15 × 边长</td></tr>
-  <tr><td>星芒纵向比</td><td class="mono">2.00</td>
-      <td>高 / 宽。1.00 才是正四角星——正四角星会读成一个「点」；
-      拉长之后它才成为一束有方向的光</td></tr>
-  <tr><td>星芒位置</td><td>左上偏置</td>
-      <td>左留白 0.18、上留白 0.125（都是 × 边长）。上留白比左留白小：
-      星芒的上下是两个细尖、视觉份量轻，不需要等量的留白</td></tr>
+      <b>不用字符 U+2726</b>：手绘路径才能在横向偏移这类改动里保持形状可控</td></tr>
+  <tr><td>星芒大小</td><td class="mono">0.28</td>
+      <td>星芒边长 / 底座边长。<b>高宽同值</b>——这个比例里没有「拉长」这个旋钮</td></tr>
+  <tr><td>星芒位置</td><td>偏左 · 纵向居中</td>
+      <td>左留白 0.13（× 边长）；纵向由几何撑满居中，不写死数字</td></tr>
   <tr><td>星芒内凹比</td><td class="mono">0.30</td>
       <td>内顶点 / 外顶点。0.30 比默认的 1/√2 凹得更深，四个角才显得利</td></tr>
-  <tr><td>星芒颜色</td><td class="mono">#04201C</td><td>深墨绿，不是白色</td></tr>
+  <tr><td>星芒颜色</td><td class="mono">#FFFFFF</td><td>纯白，不是深墨绿（理由见上）</td></tr>
 </table>
 <div class="box warn">以上是<b>唯一基准</b>，写在 <span class="mono">Sources/LumoApp/Design.swift</span>
 的 <span class="mono">LumoDesign.LumoMark</span> 里。<span class="mono">Scripts/make_icon.py</span>
-的 <span class="mono">GRAD_START / GRAD_END / STAR_INK / CORNER_RATIO / STAR_W_RATIO /
-STAR_ELONGATION / STAR_INSET_L / STAR_INSET_T / STAR_INNER_RATIO</span> 是照着它写的，
+的 <span class="mono">GRAD_START / GRAD_END / STAR_FILL / CORNER_RATIO /
+STAR_SIZE_RATIO / STAR_INSET_L / STAR_INNER_RATIO</span> 是照着它写的，
 两边文件头互相注明。改一处就改两处——这是规范，不是建议。
 同一个脚本还产出 README 顶部那个 <span class="mono">docs/logo.png</span>，
-所以它不可能是"手截的图"、也就不会在改了参数之后忘了更新。<br><br>
+所以它不可能是「手截的图」、也就不会在改了参数之后忘了更新。<br><br>
 这条规范存在的原因很具体：一旦「标识」的定义散在几处，两边迟早会各长各的——
-渐变方向可以相反、星芒可以一白一深、圆角比可以一个 0.26 一个 0.225，
-甚至多画一个文档页图形进去。写死参数就是为了让这种漂移<b>在纸面上不可能</b>。</div>
+渐变方向可以相反、星芒可以一白一深、圆角比可以一个 0.26 一个 0.225。
+写死参数就是为了让这种漂移<b>在纸面上不可能</b>。</div>
 <h3>交互</h3>
 <ul>
   <li>每一个需要用户判断的地方，都先给出系统推荐值；</li>
@@ -397,8 +399,8 @@ Sauvola 的价值全在 <span class="mono">σ</span> 项上，而<b>在本项目
 <h3>自适应逐页路由</h3>
 <ul>
   <li><b>单色页</b>（中间调像素 &lt; 12%）→ CCITT Group 4，文字页通常能省 90% 以上；</li>
-  <li><b>灰阶页</b> → JPEG 或 JPEG2000，质量跟随用户滑杆；</li>
-  <li><b>彩色页</b> → JPEG2000（体积最优）或 JPEG（兼容最优）。</li>
+  <li><b>灰阶页</b> → <b>JPEG</b>，质量跟随用户滑杆；</li>
+  <li><b>彩色页</b> → <b>JPEG</b>。</li>
 </ul>
 <h3>分层压缩（MRC）</h3>
 <p>照片式扫描件——手机拍的、有阴影有噪点——用 JPEG 压整页时，
@@ -408,7 +410,7 @@ Sauvola 的价值全在 <span class="mono">σ</span> 项上，而<b>在本项目
 也是目前扫描件压缩的事实标准：</p>
 <table>
   <tr><th>层</th><th>内容</th><th>编码</th><th>分辨率</th></tr>
-  <tr><td>背景</td><td>纸、阴影、插图</td><td>JPEG / JPEG2000（低码率）</td><td>1/3</td></tr>
+  <tr><td>背景</td><td>纸、阴影、插图</td><td>JPEG（低码率；选了 JPEG2000 时跟着走 JPX）</td><td>1/3</td></tr>
   <tr><td>文字</td><td>笔画</td><td>1bit 蒙版，无损 Flate</td><td>全分辨率</td></tr>
   <tr><td>墨色</td><td>实测的笔画平均色</td><td>填充色，随蒙版上色</td><td>—</td></tr>
 </table>
@@ -442,31 +444,54 @@ PDF 里内嵌的 JBIG2（CoreGraphics 内部带了私有的解码库，预览 ap
 <div class="box warn">如果未来系统提供了 JBIG2 编码入口，接入只需要在单色路径里加一个分支；
 在此之前，用户选择 JBIG2 时会得到 CCITT G4，并在结果里如实注明。</div>
 <div class="box">顺带回答一个常被问到的方向问题：<b>既然不追 Acrobat 的参数表，
-macOS 原生最擅长、也最主流的算法与格式是什么？</b>答案是——单色走
-<b>CCITT Group 4</b>（传真时代就在用的无损游程编码，CoreGraphics 直接支持，
-纯文字页压完常常只剩几十字节），彩色走 <b>JPEG2000</b>（同码率下比 JPEG 更干净、
-支持无损），灰度按体积 / 兼容性在 JPEG 与 JPEG2000 之间二选一，
-<b>无损层一律 Flate</b>。这四样就是系统 SDK 的"母语"，
-不需要为了让参数看起来专业而引入任何第三方编码器。</div>
+macOS 原生最擅长、也最主流的算法与格式是什么？</b>答案是四样：
+单色 <b>CCITT Group 4</b>（传真时代就在用的无损游程编码，CoreGraphics 直接支持，
+纯文字页压完常常只剩几十字节）、彩色与灰阶 <b>JPEG</b>、无损层
+<b>Flate + PNG 预测器</b>、整页照片件 <b>MRC 分层</b>。
+这就是系统 SDK 的"母语"，不需要为了让参数好看而引入任何第三方编码器。</div>
 
-<h2>10 · 验证级别与已知限制</h2>
+<h3>实测：为什么是 JPEG，以及为什么 HEIC / AVIF 用不了</h3>
+<p>ImageIO 能写 22 种格式（<span class="mono">lumo-cli encoders</span> 会现场打印清单），
+但<b>能在 PDF 里用的只有那几个标准图像滤镜</b>：DCTDecode（JPEG）、JPXDecode（JPEG 2000）、
+CCITTFaxDecode、FlateDecode、LZW、RunLength。<br>
+所以 <b>HEIC / AVIF / WebP / JPEG XL 一个都用不上</b>——系统能编码，但 PDF 里没有对应的
+滤镜，写进去没人认识；JBIG2 有滤镜而 macOS 没有编码器（见 09 节）。
+先确认"哪些格式合法"，再谈"哪个更小"，顺序反了会做很多无用功。</p>
+<table>
+  <tr><th>编码</th><th>彩色页（示例件 03）</th><th>灰阶页（示例件 02）</th><th>单色页（示例件 01）</th></tr>
+  <tr><td>JPEG</td><td><b>356 KB</b> · PSNR 50.5</td><td><b>424 KB</b> · PSNR 51.4</td><td>—</td></tr>
+  <tr><td>JPEG 2000</td><td>720 KB · PSNR 50.4</td><td>720 KB · PSNR 49.3</td><td>—</td></tr>
+  <tr><td>CCITT G4</td><td>—</td><td>—</td><td><b>14 KB</b> · 无损</td></tr>
+  <tr><td>Flate（无损）</td><td>2.12 MB</td><td>1.30 MB</td><td>20 KB</td></tr>
+</table>
+<p>读法：<b>比 PSNR 相近的那两行</b>——同样保真度下谁的字节少，谁才是更好的编码器。
+彩色页在 50.5 dB 时 JPEG 356 KB、JPEG 2000 720 KB，差了一倍；灰阶页同样是 1.7 倍。
+所以默认值全部落在 JPEG 与 CCITT G4 上。复现：
+<span class="mono">lumo-cli encbench &lt;扫描件&gt; --page 3 --quality 60,70,80,90</span>。</p>
+<div class="box warn">同一个实验还纠了一个<b>记错了很久的结论</b>。代码里原本写着
+「PDF 的 Flate 预测器不能带行首 filter 字节，加了会整页空白」。<br>
+一次带五种写法的交叉验证（<span class="mono">lumo-cli selftest</span> 的
+「Flate 与 /Predictor 交叉验证」）把它推翻了：<b>带字节</b>的 Predictor 12 / 15
+解回来与原图<b>逐像素相同</b>（平均差 0.00），<b>不带字节</b>的那版才是乱码（差 123），
+而当年被认为"能用"的 TIFF 预测器（Predictor 2）其实是错的（差 109）。<br>
+当年看不出来，是因为判据用的是「对比度」——那个判据连错的写法都放过去了（它拿了 190 分）。
+现在的判据是<b>逐像素差</b>：能区分"看着有内容"和"真的解对了"。<br>
+结果是 8 位路径改用 <b>/Predictor 15</b>（逐行自选滤波方式），无损体积再降一成左右；
+1 位路径仍然不用——PNG 滤波作用在字节上，而 1 位是一字节装 8 个像素，
+「/Columns 按采样还是按字节」各家阅读器做法不一致，不值得赌（单色本来由 G4 罩着）。</div>
+
+<h2>10 · 已验证与已知限制</h2>
 <h3>已验证（在真机 macOS arm64 上断言过）</h3>
 <ul>
   <li>体检各项指标、纠偏角度往返一致性；</li>
   <li>全流程产物重新打开、重新光栅化，逐页非空、非负片；</li>
-  <li>CCITT G4 / JPEG2000 / ZIP / 分层压缩四条编码路径；</li>
+  <li>CCITT G4 / JPEG / JPEG2000 / ZIP（含 /Predictor 15 预测器）/ 分层压缩五条编码路径；
+      另有一条交叉验证：五种 /Predictor 写法各写一份 PDF 渲染回来<b>逐像素比对</b>，
+      确认"带行首 filter 字节"才是对的；</li>
   <li>可搜索与可编辑两种 OCR 输出、页码范围选择、产物再体检能认出自己的文字层；</li>
   <li>自动裁边的四道闸门与透视校正——几何层用<b>显式构造的四边形</b>驱动，不与模型耦合；</li>
   <li>更新器：版本比较、校验（哈希 / 签名 / 缺签名拒绝）、原地替换与失败回滚、下载全链路；
       另有一条端到端用例：起一个假的更新源，真的从旧版本升到新版本。</li>
-</ul>
-<h3>未验证 / 需要真机确认</h3>
-<ul>
-  <li>DMG 在 macOS 13 上的实际表现。CI 在 macOS 14 与 26 两代系统上验证过，13 没有实机跑过；</li>
-  <li>第三方阅读器（Chrome、Acrobat）对分层压缩页的合成效果，自检只用系统渲染器验证；</li>
-  <li>Vision 识别质量在真实（非合成）扫描件上的表现；</li>
-  <li>自动裁边只在<b>合成件</b>上验证过：桌面、纸张、光照都是合成出来的。
-      手指入镜、装订侧阴影、纸张卷曲、多张纸叠放都还没测过。</li>
 </ul>
 <h3>已知限制</h3>
 <ul>
