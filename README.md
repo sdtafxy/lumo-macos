@@ -11,16 +11,12 @@
   <a href="https://github.com/sdtafxy/lumo-macos/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/sdtafxy/lumo-macos/ci.yml?style=for-the-badge&label=CI" alt="CI"></a>
   <a href="https://github.com/sdtafxy/lumo-macos/releases"><img src="https://img.shields.io/github/downloads/sdtafxy/lumo-macos/total?style=for-the-badge&color=14B8A6" alt="下载量"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-3DA639?style=for-the-badge" alt="License: MIT"></a>
-</p>
-
-<p align="center">
+  <br>
   <img src="https://img.shields.io/badge/macOS-13%2B-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS 13+">
   <img src="https://img.shields.io/badge/Swift-5.9%2B-F05138?style=for-the-badge&logo=swift&logoColor=white" alt="Swift 5.9+">
   <img src="https://img.shields.io/badge/SwiftUI-%E5%8E%9F%E7%94%9F-1D9E75?style=for-the-badge" alt="SwiftUI">
   <img src="https://img.shields.io/badge/%E7%AC%AC%E4%B8%89%E6%96%B9%E4%BE%9D%E8%B5%96-0-14B8A6?style=for-the-badge" alt="零第三方依赖">
-</p>
-
-<p align="center">
+  <br>
   <img src="https://img.shields.io/badge/PDF-%E5%A2%9E%E5%BC%BA%20%7C%20%E5%8E%8B%E7%BC%A9-B45309?style=for-the-badge" alt="PDF 增强与压缩">
   <img src="https://img.shields.io/badge/OCR-Vision-0F6E56?style=for-the-badge" alt="Vision OCR">
   <img src="https://img.shields.io/badge/%E4%B8%AD%20%2F%20%E8%8B%B1-%E5%8F%8C%E8%AF%AD-1D9E75?style=for-the-badge" alt="中英双语">
