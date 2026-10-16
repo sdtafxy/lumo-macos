@@ -102,7 +102,7 @@ def build_meta():
         "body": "## 测试版本\n- 这是端到端自检用的假 Release",
         "published_at": "2026-09-13T00:00:00Z",
         "assets": [
-            {"name": "Lumo.dmg", "browser_download_url": b + "/Lumo.dmg", "size": 1},
+            {"name": "Lumo-0.1.0.dmg", "browser_download_url": b + "/Lumo-0.1.0.dmg", "size": 1},
             {"name": zip_name, "browser_download_url": b + "/" + zip_name, "size": size},
             {"name": zip_name + ".sha256",
              "browser_download_url": b + "/" + zip_name + ".sha256", "size": 100},

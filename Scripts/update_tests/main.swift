@@ -150,7 +150,7 @@ let sampleJSON = """
   "body": "## 0.9.9\\n- 修了点什么",
   "published_at": "2026-09-13T00:00:00Z",
   "assets": [
-    {"name": "Lumo.dmg", "browser_download_url": "https://example.invalid/Lumo.dmg", "size": 100},
+    {"name": "Lumo-0.1.0.dmg", "browser_download_url": "https://example.invalid/Lumo-0.1.0.dmg", "size": 100},
     {"name": "Lumo-0.9.9.zip", "browser_download_url": "https://example.invalid/Lumo-0.9.9.zip",
      "size": 200, "digest": "sha256:\(String(repeating: "a", count: 64))"},
     {"name": "Lumo-0.9.9.zip.sha256", "browser_download_url": "https://example.invalid/sum", "size": 80}
@@ -655,8 +655,8 @@ if baseURL.isEmpty {
             "body": "## mock\n- 一段固定的 release notes，用来断言解析",
             "published_at": "2026-01-02T03:04:05Z",
             "assets": [
-                ["name": "Lumo.dmg",
-                 "browser_download_url": "\(baseURL)/Lumo.dmg", "size": 11],
+                ["name": "Lumo-0.1.0.dmg",
+                 "browser_download_url": "\(baseURL)/Lumo-0.1.0.dmg", "size": 11],
                 ["name": "Lumo-9.9.9.zip",
                  "browser_download_url": "\(baseURL)/Lumo-9.9.9.zip", "size": 222],
                 ["name": "Lumo-9.9.9.zip.sha256",

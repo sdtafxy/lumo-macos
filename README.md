@@ -103,7 +103,7 @@ App 会自己去 GitHub Releases 看有没有新版本，**点一下就原地换
 
 ## 下载
 
-[最新版本](https://github.com/sdtafxy/lumo-macos/releases/latest) → 下载 `Lumo.dmg`，拖进「应用程序」。
+[最新版本](https://github.com/sdtafxy/lumo-macos/releases/latest) → 下载 `Lumo-0.1.0.dmg`（文件名带版本号），拖进「应用程序」。
 
 App 是 **ad-hoc 签名**（没有 Developer ID），所以首次打开需要**右键 → 打开**一次。之后内置的自动更新会接管，不用再回来手动下载。
 

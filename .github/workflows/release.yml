@@ -66,14 +66,25 @@ jobs:
       - name: DMG
         id: dmg
         run: |
-          for d in dmgstage Lumo.dmg Lumo-unsigned.dmg; do
+          set -o pipefail
+          VERSION="$(cat Resources/VERSION)"
+          # ★ 安装包的文件名**必须带版本号**：Release 页上原本摆着 Lumo.dmg 与
+          #   Lumo-0.1.0.zip 两种命名，看不出是同一个版本的两份产物，
+          #   下载下来也认不出是哪个版本（文件名是最常被引用的东西）。
+          #   DMG 的**卷标**仍然是 "Lumo" —— 挂载后 Finder 里显示的是卷标，
+          #   那里带版本号只会显得啰嗦；用户看到的名字是文件名。
+          DMG="Lumo-${VERSION}.dmg"
+          for d in dmgstage Lumo-unsigned.dmg; do
             [ -e "$d" ] && mv "$d" "/tmp/stale-$$-$d" || true
           done
+          rm -f Lumo-*.dmg
           mkdir -p dmgstage
           cp -R dist/Lumo.app dmgstage/
-          hdiutil create -format UDZO -volname "Lumo" -srcfolder dmgstage -o Lumo-unsigned.dmg
-          mv Lumo-unsigned.dmg Lumo.dmg
-          ls -lh Lumo.dmg
+          hdiutil create -format UDZO -volname "Lumo" -srcfolder dmgstage -o Lumo-unsigned
+          mv Lumo-unsigned.dmg "$DMG"
+          test -f "$DMG" || { echo "::error::DMG 没生成出来"; exit 1; }
+          echo "path=$DMG" >> "$GITHUB_OUTPUT"
+          ls -lh "$DMG"
       # Release 正文**必须**是手写的那份，不能用 GitHub 的自动生成。
       #
       # 自动生成只罗列**合并的 PR**，于是"这个版本改了什么"取决于提交怎么走的：
@@ -105,7 +116,7 @@ jobs:
           # dmg 给首次安装的人；zip + .sha256 给更新器。
           # .ed25519 用 glob 带上，没签名时它不存在，action 会自动忽略。
           files: |
-            Lumo.dmg
+            ${{ steps.dmg.outputs.path }}
             dist/Lumo-*.zip
             dist/Lumo-*.zip.sha256
             dist/Lumo-*.zip.ed25519
@@ -140,8 +151,13 @@ jobs:
             echo "发布:         ${{ steps.publish.outcome }}"
             echo
             echo "--- DMG ---"
-            ls -lh Lumo.dmg 2>&1 || true
-            shasum -a 256 Lumo.dmg 2>&1 || true
+            ls -lh Lumo-*.dmg 2>&1 || true
+            shasum -a 256 Lumo-*.dmg 2>&1 || true
+            # 名字里必须有版本号——这条断言的作用是"发出去的东西一眼能认出是哪个版本"，
+            # 少了下一次就会有人问"这个 dmg 是几点几的"。
+            VERSION="$(cat Resources/VERSION)"
+            ls Lumo-*.dmg | grep -q "$VERSION" \
+              || echo "::error::DMG 的名字里没有版本号（$VERSION）"
             echo
             echo "--- 更新包（更新器真正会下载的东西）---"
             ls -lh dist/Lumo-*.zip dist/Lumo-*.zip.sha256 dist/Lumo-*.zip.ed25519 2>&1 || true
@@ -193,8 +209,8 @@ jobs:
           fi
           {
             echo "--- ${GITHUB_REF_NAME}  $(date -u +%FT%TZ)  status=${{ job.status }} ---"
-            ls -lh Lumo.dmg 2>&1 | tail -1
-            shasum -a 256 Lumo.dmg 2>&1 | awk '{print $1}'
+            ls -lh Lumo-*.dmg 2>&1 | tail -1
+            shasum -a 256 Lumo-*.dmg 2>&1 | awk '{print $1}' '
           } >> ci-diag/release-history.new
           mv -f ci-diag/release-history.new ci-diag/release-history.txt
           git add -f ci-diag
