@@ -46,11 +46,9 @@ final class LumoPreferences: ObservableObject {
     @Published var rememberWindowSize: Bool {
         didSet {
             d.set(rememberWindowSize, forKey: LumoPreferenceKeys.rememberWindowSize)
-            // 立刻生效：不用等下次启动。窗口那边会读这个键（见 WindowConfigurator），
-            // 但"已经在屏幕上的那个窗口"需要推它一把——改完立刻重排最直观。
-            for w in NSApp?.windows ?? [] where w.identifier?.rawValue == WindowConfigurator.mainWindowIdentifier {
-                WindowConfigurator.applyFrameAutosave(to: w)
-            }
+            // 关掉"记住"时立刻把已保存的 frame 清掉：下次启动才会回到默认位置。
+            // 打开时不用做什么——SwiftUI 的场景自动保存本来就在跑（窗口位置只留这一套机制）。
+            if !rememberWindowSize { WindowConfigurator.discardSavedWindowFrame() }
         }
     }
 

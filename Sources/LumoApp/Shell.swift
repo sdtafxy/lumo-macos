@@ -33,7 +33,33 @@ struct WindowConfigurator: NSViewRepresentable {
         return v
     }
     func updateNSView(_ nsView: NSView, context: Context) {
+        // ★ 窗口位置/大小**只留一套机制**：SwiftUI 自己的场景自动保存。
+        //
+        // 这里曾经是"我们也设一个 setFrameAutosaveName"，结果是两套机制打架，
+        // 表现为用户反馈的那句「每次退出再打开，窗口像突然从某个位置闪现到另一个位置」。
+        // 实测（高帧率采样窗口 bounds）：窗口先在 (470,167) 出现，36 ms 后跳到 (120,90)。
+        // 根因：SwiftUI 的 Window 场景**在创建窗口时**就按它自己保存的 frame 恢复了一次
+        // （键名形如 `NSWindow Frame SwiftUI.SubscriptionView…-AppWindow-1`），
+        // 而我们把 autosave 名换成自己的 `LumoMainWindow` 之后，**SwiftUI 那份就不再更新、
+        // 冻在旧值上**——于是每次启动都先落在旧位置，再被我们搬到新位置。
+        // 两套都"记得住"，但没有一套是权威的。
+        //
+        // 现在不再插手 autosave 名：SwiftUI 的恢复发生在窗口上屏之前，
+        // 所以用户只会看到它在最终位置出现一次。"不记住窗口大小"这个偏好
+        // 改为在启动时清掉保存的 frame 实现（见 AppDelegate）。
         DispatchQueue.main.async { configure(nsView.window) }
+    }
+
+    /// 清掉保存过的窗口 frame（"不记住窗口大小"时用）。
+    ///
+    /// 连 SwiftUI 自己存的那几份一起清：**只清我们那份没用**——
+    /// 真正在窗口创建时生效的是 SwiftUI 那份。这是"位置只留一套机制"的配套：
+    /// 那一套是 SwiftUI 的，所以关掉记忆也得关它。
+    static func discardSavedWindowFrame() {
+        let d = UserDefaults.standard
+        for key in d.dictionaryRepresentation().keys where key.hasPrefix("NSWindow Frame ") {
+            d.removeObject(forKey: key)
+        }
     }
 
     private func configure(_ w: NSWindow?) {
@@ -78,17 +104,6 @@ struct WindowConfigurator: NSViewRepresentable {
         // 参考 §3 要的是"顶部约 50pt 区域保持可拖拽"，那就只留那 50pt（见 WindowDragStrip）。
         w.isMovableByWindowBackground = false
 
-        Self.applyFrameAutosave(to: w)
-    }
-
-    /// 按用户偏好决定要不要记住窗口大小与位置。
-    ///
-    /// 直接读 UserDefaults 而不是问 `LumoPreferences.shared`：这个函数在 AppKit 侧、
-    /// 不是 MainActor 上下文，为一个布尔值去跨 actor 不值得（键名见 LumoPreferenceKeys）。
-    static func applyFrameAutosave(to w: NSWindow) {
-        let remember = UserDefaults.standard.object(forKey: LumoPreferenceKeys.rememberWindowSize)
-            as? Bool ?? true
-        _ = w.setFrameAutosaveName(remember ? frameAutosaveName : "")
     }
 
     /// 给窗口装上"关闭即隐藏"的拦截器。**只装一次**（`updateNSView` 会被反复调用）。

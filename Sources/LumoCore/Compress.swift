@@ -38,9 +38,20 @@ public enum Compressor {
     private static let qualityKey = kCGImageDestinationLossyCompressionQuality as String
 
     /// 自适应时逐页决定走彩色/灰阶/单色——同一份 PDF 里文字页和插图页常常不同
+    /// 用户选的是"不丢像素"的编码吗？
+    ///
+    /// 这两个值放在一起判，因为它们要守的是**同一条承诺**：
+    /// 选了它们就（1）不许自动二值化、（2）不许走 MRC 分层。
+    /// 早先只有 zip 时没人注意，但那时就已经是错的：勾着自适应选 ZIP，
+    /// 页面会被 MRC 拿走，而 MRC 的背景层是**有损 JPEG**——"无损"只对编码那一步成立。
+    public static func isLossless(_ spec: CompressSpec) -> Bool {
+        spec.colorEncoder == "zip" || spec.colorEncoder == "jp2lossless"
+    }
+
     public static func effectiveMode(_ image: CGImage, _ spec: CompressSpec) -> String {
         var m = spec.colorMode
-        if spec.adaptive || m == "auto" {
+        let autoPicked = spec.adaptive || m == "auto"
+        if autoPicked {
             // 先问「有没有颜色」再问「是不是文字页」，顺序反了会出大事：
             // isMonoLike 只看灰度中间调，蓝色页眉 + 红色印章在灰度上和普通文字页
             // 几乎没区别——示例扫描件第 3 页就是这样被整页二值化，印章直接变黑块的。
@@ -50,6 +61,10 @@ public enum Compressor {
             else { m = "gray" }
         }
         if m != "color" && m != "gray" && m != "mono" { m = "color" }
+        // ★ 无损请求下不做自动二值化：二值化本身就是丢像素。
+        //   否则"无损"只对最后那一步编码成立，对整条流水线是假的。
+        //   只拦"自动判定"这一支——用户明确选 mono 就照他说的做。
+        if autoPicked, isLossless(spec), m == "mono" { m = "gray" }
         return m
     }
 
@@ -126,6 +141,16 @@ public enum Compressor {
         guard let gray = grayCGImage(from: image) else { return encodeColor(image, spec) }
         let q = qualityValue(spec.quality)
         switch spec.colorEncoder {
+        case "jp2lossless":
+            if let d = imageIOEncode(gray, "public.jpeg-2000", 1.0) {
+                return EncodedImage(data: d, colorSpace: "/DeviceGray", filter: "/JPXDecode",
+                                    bitsPerComponent: 8, decodeParms: nil,
+                                    width: gray.width, height: gray.height, mode: "gray",
+                                    encoderUsed: "JPEG2000 无损", note: nil)
+            }
+            guard let sm = graySamples(gray) else { return jpegResult(gray, q, mode: "gray", note: nil) }
+            return flateResult(sm.bytes, rowBytes: sm.width, width: sm.width, height: sm.height,
+                               colors: 1, colorSpace: "/DeviceGray", mode: "gray")
         case "jp2":
             if let d = imageIOEncode(gray, "public.jpeg-2000", q) {
                 return EncodedImage(data: d, colorSpace: "/DeviceGray", filter: "/JPXDecode",
@@ -146,6 +171,18 @@ public enum Compressor {
     private static func encodeColor(_ image: CGImage, _ spec: CompressSpec) -> EncodedImage {
         let q = qualityValue(spec.quality)
         switch spec.colorEncoder {
+        case "jp2lossless":
+            // ★ 真·无损（quality = 1.0）。实测与原始像素**逐点相同**，
+            //   彩色页体积约为 Flate 的一半（示例件第 3 页 1.05 MB : 2.12 MB）。
+            //   归档场景这就是该选的那一档：既不小得含糊，也不大到离谱。
+            //   注意 quality 走的是原值 1.0，**不要**过 qualityValue（那个把上限压到 0.98）。
+            if let d = imageIOEncode(image, "public.jpeg-2000", 1.0) {
+                return EncodedImage(data: d, colorSpace: "/DeviceRGB", filter: "/JPXDecode",
+                                    bitsPerComponent: 8, decodeParms: nil,
+                                    width: image.width, height: image.height, mode: "color",
+                                    encoderUsed: "JPEG2000 无损", note: nil)
+            }
+            return flateResultColor(image, spec, note: T("无损 JPEG2000 不可用，已改用无损 Flate"))
         case "jp2":
             if let d = imageIOEncode(image, "public.jpeg-2000", q) {
                 return EncodedImage(data: d, colorSpace: "/DeviceRGB", filter: "/JPXDecode",
@@ -155,12 +192,26 @@ public enum Compressor {
             }
             return jpegResult(image, q, mode: "color", note: T("JPEG2000 不可用，已改用 JPEG"))
         case "zip":
-            guard let s = rgbSamples(image) else { return jpegResult(image, q, mode: "color", note: nil) }
-            return flateResult(s.bytes, rowBytes: s.width * 3, width: s.width, height: s.height,
-                               colors: 3, colorSpace: "/DeviceRGB", mode: "color")
+            return flateResultColor(image, spec, note: nil)
         default:
             return jpegResult(image, q, mode: "color", note: nil)
         }
+    }
+
+    /// 彩色路径的 Flate 兜底（zip 与 jp2lossless 的降级都走它）。
+    private static func flateResultColor(_ image: CGImage, _ spec: CompressSpec,
+                                         note: String?) -> EncodedImage {
+        let q = qualityValue(spec.quality)
+        guard let s = rgbSamples(image) else {
+            return jpegResult(image, q, mode: "color", note: note)
+        }
+        let r = flateResult(s.bytes, rowBytes: s.width * 3, width: s.width, height: s.height,
+                            colors: 3, colorSpace: "/DeviceRGB", mode: "color")
+        guard let note else { return r }
+        return EncodedImage(data: r.data, colorSpace: r.colorSpace, filter: r.filter,
+                            bitsPerComponent: r.bitsPerComponent, decodeParms: r.decodeParms,
+                            width: r.width, height: r.height, mode: r.mode,
+                            encoderUsed: r.encoderUsed, note: note)
     }
 
     /// 数 JPEG 码流里到底有几个分量。
@@ -448,7 +499,9 @@ public enum Compressor {
         // 示例扫描件第 3 页在灰度上算「文字页」、在饱和度上算「彩色页」，
         // 于是 MRC 被跳过、整页 JPEG2000 703KB，两头不讨好。
         let mode = effectiveMode(image, spec)
-        if wantsAdaptive, mode != "mono", let mrc = encodeMRC(image, spec) {
+        // ★ 无损请求下不走 MRC。分层能省得更多，但它的背景层是有损 JPEG、
+        //   还会量化墨色——那与用户选的那一档自相矛盾。
+        if wantsAdaptive, !isLossless(spec), mode != "mono", let mrc = encodeMRC(image, spec) {
             return PageEncoding(flat: mrc.background, mrc: mrc)
         }
         return PageEncoding(flat: encode(image, spec), mrc: nil)

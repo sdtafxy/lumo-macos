@@ -536,6 +536,84 @@ func selftest() -> Int32 {
         }
     }
 
+    print("==> 无损编码的语义与处理分辨率")
+    do {
+        let u = src
+        let d = PDFReader.open(u)
+        // 第 3 页是彩色页，第 1 页是"看起来像单色"的页——两条都测
+        let colorPage = d.flatMap { PDFReader.render($0, 2, dpi: 150) }
+        let monoLikePage = d.flatMap { PDFReader.render($0, 0, dpi: 150) }
+        let lossless = CompressSpec(adaptive: true, colorMode: "auto",
+                                   colorEncoder: "jp2lossless", monoEncoder: "ccitt", quality: 72)
+        let plain = CompressSpec(adaptive: true, colorMode: "auto",
+                                 colorEncoder: "jpeg", monoEncoder: "ccitt", quality: 72)
+
+        if let colorPage {
+            // ① 无损就必须真的无损：编码 → 解码 → 与原图逐像素比
+            let enc = Compressor.encode(colorPage, lossless)
+            if let src2 = CGImageSourceCreateWithData(enc.data as CFData, nil),
+               let back = CGImageSourceCreateImageAtIndex(src2, 0, nil),
+               let a = GrayBitmap.from(colorPage), let b = GrayBitmap.from(back) {
+                check(a.pixels == b.pixels,
+                      "无损 JPEG2000 编解码后逐像素相同（\(enc.data.count) 字节）")
+            } else {
+                check(false, "无损 JPEG2000 解不回来")
+            }
+            // ② 选了无损就不许走 MRC —— MRC 的背景层是有损 JPEG，
+            //    否则"无损"只对最后一步成立，对整条流水线是假的。
+            // MRC 只在"有文字、又不是整页都是字"的页上才生效，所以**三页都过一遍**：
+            // 只要有一页在常规编码下会分层，而三页在无损编码下都不分层，这条判据就成立。
+            // 注意要拿**增强之后**的页来判断：MRC 的闸门看的是墨色比例，
+            // 而原始渲染的彩色照片页墨色比例超标、本来就不会分层——
+            // 第一版断言就是这么假红的（在未增强的页上要求它走 MRC）。
+            let enhanceSpec = EnhanceSpec(preset: "auto", bgRemove: true, descreen: false,
+                                          sharpen: 1.0, autoCrop: nil)
+            let pages = (0..<3).compactMap { PDFReader.render(d!, $0, dpi: 150) }
+                .map { Enhance.apply($0, spec: enhanceSpec) }
+            // 注意：示例件这三页都不满足 MRC 的墨色比例闸门（照片页超标、纯文字页又太少
+            // 到不了分层收益），所以下面这条**在本机是"没坏"而不是"被守住了"**——
+            // 真正有牙齿的是下面 effectiveMode 那条（常规编码确实会把第 1 页判成单色）。
+            // MRC 路径本身的正确性由上面的「PDF 蒙版层生效」与 ZIP 那一节覆盖。
+            check(Compressor.isLossless(lossless) && !Compressor.isLossless(plain),
+                  "isLossless 只认无损编码（zip / jp2lossless）")
+            check(pages.allSatisfy { !compressorUsedMRC($0, lossless) },
+                  "选了无损编码就不走 MRC（分层背景是有损的）")
+            check(Compressor.encodeWithLayers(colorPage, lossless).mrc == nil,
+                  "彩色页在无损编码下同样不分层")
+        } else {
+            check(false, "渲染示例件第 3 页")
+        }
+
+        if let monoLikePage {
+            // ③ 无损请求下不自动二值化（二值化本身是丢像素）
+            check(Compressor.effectiveMode(monoLikePage, plain) == "mono",
+                  "自动模式把第 1 页判为单色（这条保证下面那条有意义）")
+            check(Compressor.effectiveMode(monoLikePage, lossless) != "mono",
+                  "选了无损编码就不自动二值化")
+        } else {
+            check(false, "渲染示例件第 1 页")
+        }
+
+        // ④ 处理分辨率不放大：源件 150 dpi，就该按 150 处理。
+        //    这条是有来历的——默认值曾经写死 300，于是 150 dpi 的扫描件被放大 4 倍像素，
+        //    输出比源文件还大 6.5%（808 KB vs 759 KB），而界面预估只有 77 KB。
+        let out = tmp.appendingPathComponent("dpi-default.pdf")
+        let est = d.map { PDFReader.estimateDPI(u, pageWidthPt: PDFReader.mediaBox($0, 0).width) } ?? 300
+        if let r = try? Pipeline.process(fileURL: u,
+                                         spec: ProcessSpec(pages: "1",
+                                                           enhance: EnhanceSpec(preset: "original", deskew: false),
+                                                           ocr: OCRSpec(enabled: false, lang: "eng", output: "searchable", skip: true),
+                                                           compress: plain,
+                                                           procDpi: nil),
+                                         outURL: out) {
+            check(r.steps.contains { $0.contains("处理分辨率 \(Pipeline.procDpi(est)) dpi") },
+                  "处理分辨率跟随源件（\(Pipeline.procDpi(est)) dpi）而不是固定 300")
+            check(r.outSize < r.inSize, "按源件分辨率处理之后输出确实变小了（\(r.inSize) → \(r.outSize) 字节）")
+        } else {
+            check(false, "按默认分辨率处理示例件第 1 页")
+        }
+    }
+
     print("==> ZIP 无损路径")
     let zipOut = tmp.appendingPathComponent("zip.pdf")
     do {
@@ -2152,7 +2230,7 @@ func printUsage() {
       --output searchable|editable
       --preset auto|bw|color|contrast|original
       --quality 1-100
-      --color-encoder jpeg|jp2|zip
+      --color-encoder jpeg|jp2|jp2lossless|zip
       --mono-encoder ccitt|zip
       --color-mode auto|color|gray|mono
       --dpi <n>
@@ -2174,6 +2252,11 @@ func cmdReport(_ path: String) -> Int32 {
         print("error: \(error.localizedDescription)")
         return 1
     }
+}
+
+/// 给自检用：这个 spec 下会不会走 MRC 分层。
+func compressorUsedMRC(_ img: CGImage, _ spec: CompressSpec) -> Bool {
+    Compressor.encodeWithLayers(img, spec).mrc != nil
 }
 
 /// 把编码结果解回来（JPEG / JPEG2000 都是 ImageIO 能直接读的完整文件）。
@@ -2208,7 +2291,46 @@ func psnrValue(_ a: CGImage, _ b: CGImage) -> Double? {
     return mse == 0 ? .infinity : 10 * log10(255.0 * 255.0 / mse)
 }
 
-/// 编码器实测对比：同一页、同一质量下，谁更小、谁更保真。
+/// 分块 SSIM（8×8 非重叠窗口，取均值）。
+///
+/// 为什么不能只看 PSNR：PSNR 是**逐像素误差的平方和**，它对「整体偏了一点点」极其敏感，
+/// 却对「文字边缘糊了 / 出现 8×8 方块」不敏感——而那正是 JPEG 与 JPEG 2000 的分野。
+/// SSIM 看的是局部均值/方差/协方差的相似度，对结构更敏感，两个指标一起看才下得了结论。
+///
+/// 用非重叠 8×8 块而不是高斯滑动窗：实现简单、够用，且与 DCT 的块结构同尺度。
+func ssimValue(_ a: CGImage, _ b: CGImage) -> Double? {
+    let w = min(a.width, b.width), h = min(a.height, b.height)
+    guard w >= 8, h >= 8, let ga = grayBytes(a, w: w, h: h), let gb = grayBytes(b, w: w, h: h) else {
+        return nil
+    }
+    let C1 = pow(0.01 * 255.0, 2), C2 = pow(0.03 * 255.0, 2)
+    var total = 0.0, blocks = 0.0
+    var y = 0
+    while y + 8 <= h {
+        var x = 0
+        while x + 8 <= w {
+            var sa = 0.0, sb = 0.0, saa = 0.0, sbb = 0.0, sab = 0.0
+            for j in 0..<8 {
+                for i in 0..<8 {
+                    let va = Double(ga[(y + j) * w + (x + i)])
+                    let vb = Double(gb[(y + j) * w + (x + i)])
+                    sa += va; sb += vb; saa += va * va; sbb += vb * vb; sab += va * vb
+                }
+            }
+            let npt = 64.0
+            let ma = sa / npt, mb = sb / npt
+            let va = saa / npt - ma * ma, vb = sbb / npt - mb * mb
+            let cov = sab / npt - ma * mb
+            let s = ((2 * ma * mb + C1) * (2 * cov + C2)) / ((ma * ma + mb * mb + C1) * (va + vb + C2))
+            total += s; blocks += 1
+            x += 8
+        }
+        y += 8
+    }
+    return blocks > 0 ? total / blocks : nil
+}
+
+/// 编码器实测对比：同一页、同一质量下，谁更小、谁更保真。/// 编码器实测对比：同一页、同一质量下，谁更小、谁更保真。
 ///
 /// 为什么值得单开一个命令：这个项目的纪律是「更学术不是换算法的理由，实测才是」。
 /// 压缩器的默认值同样该由实测决定，而且**要能在任何人的机器上重跑**——
@@ -2229,8 +2351,20 @@ func cmdEncBench(_ args: [String]) -> Int32 {
     let dpi = Int(value("--dpi", "150")) ?? 150
     let qualities = value("--quality", "60,70,80,90")
         .split(separator: ",").compactMap { Int($0) }
-    guard let doc = PDFReader.open(URL(fileURLWithPath: src)),
-          let img = PDFReader.render(doc, page - 1, dpi: dpi) else {
+    // 输入可以是 PDF（取某一页）也可以是图片文件——后者方便针对性地造数据：
+    // 想知道"网点图该用哪个编码"，就先合成一张网点图，再直接喂进来。
+    let srcURL = URL(fileURLWithPath: src)
+    var img: CGImage? = nil
+    if src.lowercased().hasSuffix(".pdf") {
+        guard let doc = PDFReader.open(srcURL) else {
+            print("error: 打不开 \(src)")
+            return 1
+        }
+        img = PDFReader.render(doc, page - 1, dpi: dpi)
+    } else if let s = CGImageSourceCreateWithURL(srcURL as CFURL, nil) {
+        img = CGImageSourceCreateImageAtIndex(s, 0, nil)
+    }
+    guard let img else {
         print("error: 打不开或渲染不了 \(src) 第 \(page) 页")
         return 1
     }
@@ -2248,7 +2382,7 @@ func cmdEncBench(_ args: [String]) -> Int32 {
         ? [("CCITT G4", "ccitt"), ("Flate", "zip")]
         : [("JPEG", "jpeg"), ("JPEG 2000", "jp2"), ("Flate", "zip")]
 
-    var rows: [(encoder: String, q: Int, bytes: Int, psnr: Double?)] = []
+    var rows: [(encoder: String, q: Int, bytes: Int, psnr: Double?, ssim: Double?)] = []
     for (name, enc) in candidates {
         // 无损编码器与 quality 无关，只跑一次
         let qs = enc == "zip" ? [(qualities.first ?? 72)] : qualities
@@ -2258,20 +2392,42 @@ func cmdEncBench(_ args: [String]) -> Int32 {
             base.quality = q
             let r = Compressor.encode(img, base)
             var ps: Double? = nil
-            if enc != "zip", let back = decodeImage(r.data) { ps = psnrValue(img, back) }
-            rows.append((name, q, r.data.count, ps))
+            var ss: Double? = nil
+            if enc != "zip", let back = decodeImage(r.data) {
+                ps = psnrValue(img, back)
+                ss = ssimValue(img, back)
+            }
+            rows.append((name, q, r.data.count, ps, ss))
         }
     }
 
     let best = rows.map(\.bytes).min() ?? 1
-    print("编码器        质量     字节        bits/px   PSNR(dB)   相对最小")
+    print("编码器        质量     字节        bits/px   PSNR(dB)   SSIM     相对最小")
     for r in rows {
         let bpp = Double(r.bytes) * 8.0 / Double(img.width * img.height)
         let ps = r.psnr.map { $0.isInfinite ? "lossless" : String(format: "%6.2f", $0) } ?? "     —"
-        print(String(format: "%-12@  %3d  %9d  %7.3f   %@   %5.2f×",
-                     r.encoder as NSString, r.q, r.bytes, bpp, ps as NSString,
+        let ss = r.ssim.map { $0.isInfinite ? "lossless" : String(format: "%.4f", $0) } ?? "     —"
+        print(String(format: "%-12@  %3d  %9d  %7.3f   %@   %@   %5.2f×",
+                     r.encoder as NSString, r.q, r.bytes, bpp,
+                     ps as NSString, ss as NSString,
                      Double(r.bytes) / Double(best)))
     }
+
+    // ★ 同**码率**对照：这才是"压缩比更高还能保持质量"这句论断的正确检验方式。
+    //   同质量的比法会因为两个编码器的 quality 标尺不同而失真。
+    let lossless = rows.filter { $0.ssim == nil }
+    let lossy = rows.filter { $0.ssim != nil }
+    if lossy.count >= 2 {
+        print("")
+        print("同码率对照（把各编码器的点连成折线，看同样 bits/px 时谁更保真）：")
+        for r in lossy.sorted(by: { $0.bytes < $1.bytes }) {
+            let bpp = Double(r.bytes) * 8.0 / Double(img.width * img.height)
+            print(String(format: "  %-12@ %6.3f bpp   PSNR %6.2f   SSIM %.4f",
+                         r.encoder as NSString, bpp,
+                         r.psnr ?? 0, r.ssim ?? 0))
+        }
+    }
+    _ = lossless
     print("")
     // 同一质量档下谁最小——这才是"同条件下谁更强"，而不是拿一个编码的低质量
     // 去比另一个的高质量。
@@ -2281,10 +2437,32 @@ func cmdEncBench(_ args: [String]) -> Int32 {
         let win = same.min { $0.bytes < $1.bytes }!
         print("质量 \(q)：最小的是 \(win.encoder)（\(win.bytes) 字节）")
     }
+    // ★ 无损 JPEG 2000 能不能当"无损"选项用？
+    //   判据只有一条：**编码再解码之后，像素是不是逐点相同**。
+    //   体积再小，只要不是真无损，就不能挂在"无损"这一档上。
+    if mode != "mono" {
+        print("")
+        print("无损 JPEG 2000 检测（quality = 1.0）：")
+        let out = NSMutableData()
+        if let dest = CGImageDestinationCreateWithData(out, "public.jpeg-2000" as CFString, 1, nil) {
+            let props = [kCGImageDestinationLossyCompressionQuality as String: 1.0] as CFDictionary
+            CGImageDestinationAddImage(dest, img, props)
+            if CGImageDestinationFinalize(dest), let back = decodeImage(out as Data) {
+                let same = psnrValue(img, back).map { $0.isInfinite } ?? false
+                print("  体积 \((out as Data).count) 字节   与原始像素逐点相同：\(same ? "是（真无损）" : "否（仍有损）")")
+            } else {
+                print("  编码失败")
+            }
+        } else {
+            print("  系统没有 JPEG 2000 编码器")
+        }
+    }
+
     print("")
     print("提示：比较时**看 PSNR 相近的那两行**——同样保真度下谁的字节少，谁才是更好的编码器。")
     return 0
 }
+
 
 func cmdProcess(_ args: [String]) -> Int32 {
     guard args.count >= 2 else { printUsage(); return 2 }

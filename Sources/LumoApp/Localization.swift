@@ -189,9 +189,17 @@ enum LumoAppText {
         "CCITT 组4": "CCITT Group 4",
         "ZIP 无损": "ZIP (lossless)",
         "自适应压缩（按页选最省编码）": "Adaptive (pick the smallest codec per page)",
-        "实测：同一保真度下 JPEG 的体积约为 JPEG2000 的一半；单色页用 CCITT G4 最小。":
-            "Measured: at equal fidelity JPEG is about half the size of JPEG2000, "
-            + "and CCITT G4 is the smallest for monochrome pages.",
+        "实测：同保真度下 JPEG 约为 JPEG2000 的一半，单色页 G4 最小；归档选无损档（无损 JPEG2000 约为无损 Flate 的一半）。":
+            "Measured: at equal fidelity JPEG is about half the size of JPEG2000 and "
+            + "CCITT G4 is smallest for mono pages; for archiving pick a lossless option "
+            + "(lossless JPEG 2000 is about half the size of lossless Flate).",
+        "JPEG2000 无损": "JPEG 2000 (lossless)",
+        "返回首页": "Back to start",
+        "回到首页，当前文件与结果都会清掉": "Return to the start screen; the current file and result are cleared",
+        "并排": "Side by side",
+        "窗帘": "Curtain",
+        "窗帘：单页显示，拖动中间的竖线比较同一处": "Curtain: one page, drag the divider to compare the same spot",
+        "正在生成预览…": "Generating preview…",
         "原图": "Original",
         "压缩": "Compression",
         "体积已预估": "Size estimated",

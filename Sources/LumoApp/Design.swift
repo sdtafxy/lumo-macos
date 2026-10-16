@@ -82,6 +82,8 @@ enum LumoDesign {
     /// 状态色（语义，不是"橙色好看"）
     static var ok: Color     { .adaptive(light: 0x0E7C6B, dark: 0x4ADEBD) }
     static var warn: Color   { .adaptive(light: 0xB45309, dark: 0xF5B563) }
+    /// 需要处理的指标底色（比 accentSoft 更淡的琥珀）。与 `warn` 配对使用。
+    static var warnSoft: Color { .adaptive(light: 0xFDF3E4, dark: 0x3A2A16) }
     static var danger: Color { .adaptive(light: 0xB42318, dark: 0xF08C80) }
 
     // MARK: - 圆角

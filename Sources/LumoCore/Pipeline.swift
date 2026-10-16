@@ -47,7 +47,7 @@ public enum Pipeline {
 
         let sample = Array(0..<min(n, 6))
         var modes: [String] = []
-        var skewSum = 0.0
+        var skews: [Double] = []
         var noiseSum = 0.0
         var bgSum = 0.0
         var paperSum = 0.0
@@ -57,7 +57,7 @@ public enum Pipeline {
             autoreleasepool {
                 guard let img = PDFReader.render(doc, i, dpi: 120) else { return }
                 modes.append(Analyzer.colorMode(of: img).rawValue)
-                skewSum += Enhance.detectSkew(img)
+                skews.append(Enhance.detectSkew(img))
                 noiseSum += Analyzer.noiseLevel(img)
                 bgSum += Analyzer.backgroundUnevenness(img)
                 paperSum += Enhance.paperLevel(img)
@@ -68,11 +68,15 @@ public enum Pipeline {
 
         let analysis = Analysis(pageCount: n, fileSize: fileSize, hasTextLayer: hasText,
                                 textRatio: textRatio, colorMode: docMode, estimatedDpi: dpi,
-                                skewAngle: skewSum / Double(cnt),
+                                // ★ 取"绝对值最大的那一页"，不是平均。
+                                //   平均会让方向相反的倾斜互相抵消（实测 +0.9/−1.5/+0.5 → −0.03），
+                                //   于是界面上看不出任何一页是歪的，纠偏也不会被推荐。
+                                skewAngle: skews.max(by: { abs($0) < abs($1) }) ?? 0,
                                 noiseLevel: noiseSum / Double(cnt),
                                 bgUnevenness: bgSum / Double(cnt),
                                 paperWhite: paperSum / Double(cnt),
-                                pageModes: modes)
+                                pageModes: modes,
+                                pageSkewAngles: skews)
 
         var rec = Workflow.recommend(analysis)
         var plans = Workflow.definePlans(analysis)
@@ -121,7 +125,17 @@ public enum Pipeline {
         let idxs = PDFReader.parsePageSelection(total, spec.pages)
         guard !idxs.isEmpty else { throw PipelineError.emptyPageSelection }
 
-        let dpi = procDpi(spec.procDpi ?? 300)
+        // ★ 没指定处理分辨率时，用**源件自己的** dpi（再钳到 150~300），而不是写死 300。
+        //
+        // 这里原来写的是 `spec.procDpi ?? 300`，后果实测过：一份 150 dpi 的扫描件
+        // 会被渲染到 2480×3506（=300 dpi），像素凭空多出 4 倍，而**信息一个都没多**——
+        // 出来的文件比源文件还大 6.5%（808 KB vs 759 KB），
+        // 而界面上"预计输出"是按 150 dpi 估的（77 KB），差了整整一个数量级。
+        // 项目自己的规则写着"处理分辨率只降不升"（见 procDpi 的注释），
+        // 这条默认值当时是漏网的。
+        let sourceDpi = PDFReader.estimateDPI(fileURL,
+                                              pageWidthPt: PDFReader.mediaBox(doc, 0).width)
+        let dpi = procDpi(spec.procDpi ?? sourceDpi)
         progress?(0, T("已选择 %@ 页", idxs.count))
 
         // 流式写入：处理一页写一页，内存不再随页数增长。
@@ -217,7 +231,7 @@ public enum Pipeline {
                                inSize: inSize, outSize: outSize, savedPct: saved,
                                pagesProcessed: writtenPages, ocrEngine: ocrEngine,
                                ocrChars: ocrChars,
-                               steps: summarize(spec, idxs.count, mrcPages),
+                               steps: summarize(spec, idxs.count, mrcPages, dpi: dpi),
                                elapsedSec: Date().timeIntervalSince(t0),
                                previewBefore: previewBefore, previewAfter: previewAfter,
                                sidecar: sidecar, download: outURL.path, warnings: notes)
@@ -225,8 +239,14 @@ public enum Pipeline {
 
     // MARK: - 辅助
 
-    private static func summarize(_ spec: ProcessSpec, _ n: Int, _ mrcPages: Int = 0) -> [String] {
+    private static func summarize(_ spec: ProcessSpec, _ n: Int,
+                                  _ mrcPages: Int = 0, dpi: Int = 0) -> [String] {
         var s = [T("处理 %@ 页", n)]
+        // 处理分辨率写进结果说明：以前这条信息只活在代码里，于是
+        // "150 dpi 的源件被按 300 dpi 放大处理"这种问题没人看得见，
+        // 直到有人发现输出比输入还大。写出来，用户和自检都看得见。
+        // `%@` 配 Int：T() 会把参数统一转成字符串再格式化（见 LumoCore/Localization.swift）。
+        if dpi > 0 { s.append(T("处理分辨率 %@ dpi", dpi)) }
         if let p = spec.enhance.preset, p != "original" {
             s.append(T("增强模式：%@", EnhancePreset(p).title))
         }

@@ -11,6 +11,7 @@ public struct Analysis: Codable, Equatable, Sendable {
     public var textRatio: Double
     public var colorMode: String          // color | gray | mono
     public var estimatedDpi: Int
+    /// 最歪的那一页的角度（带符号）。**不是平均值**——见 `pageSkewAngles`。
     public var skewAngle: Double
     public var noiseLevel: Double
     /// 背景不匀程度（0~1）。与噪声是两件事：噪声是"平坦区域抖不抖"，
@@ -27,12 +28,20 @@ public struct Analysis: Codable, Equatable, Sendable {
     /// 得配 Enhance.paperMean 一起看（见 Enhance.isPaperWhite 的双判据）。
     public var paperWhite: Double
     public var pageModes: [String]
+    /// 每一张抽样页各自的倾斜角（度）。
+    ///
+    /// ★ 为什么必须逐页留：倾斜是**逐页**的性质，而"取平均"会把它抵消掉——
+    /// 实测踩到过：示例件三页分别是 +0.9° / −1.5° / +0.5°，平均下来是 −0.03°，
+    /// 界面上就显示"倾斜 0.03°"，而第 1 页肉眼就看得出歪。
+    /// 更糟的是"要不要纠偏"的判据也吃这个平均值，于是**永远不推荐纠偏**。
+    public var pageSkewAngles: [Double]
 
     public init(pageCount: Int = 0, fileSize: Int = 0, hasTextLayer: Bool = false,
                 textRatio: Double = 0, colorMode: String = "color",
                 estimatedDpi: Int = 300, skewAngle: Double = 0,
                 noiseLevel: Double = 0, bgUnevenness: Double = 0,
-                paperWhite: Double = 255, pageModes: [String] = []) {
+                paperWhite: Double = 255, pageModes: [String] = [],
+                pageSkewAngles: [Double] = []) {
         self.pageCount = pageCount
         self.fileSize = fileSize
         self.hasTextLayer = hasTextLayer
@@ -44,6 +53,7 @@ public struct Analysis: Codable, Equatable, Sendable {
         self.bgUnevenness = bgUnevenness
         self.paperWhite = paperWhite
         self.pageModes = pageModes
+        self.pageSkewAngles = pageSkewAngles
     }
 
     enum CodingKeys: String, CodingKey {
@@ -58,6 +68,7 @@ public struct Analysis: Codable, Equatable, Sendable {
         case bgUnevenness = "bg_unevenness"
         case paperWhite = "paper_white"
         case pageModes = "page_modes"
+        case pageSkewAngles = "page_skew_angles"
     }
 
     public init(from decoder: Decoder) throws {
@@ -73,6 +84,7 @@ public struct Analysis: Codable, Equatable, Sendable {
         bgUnevenness = try c.decodeIfPresent(Double.self, forKey: .bgUnevenness) ?? 0
         paperWhite   = try c.decodeIfPresent(Double.self, forKey: .paperWhite) ?? 255
         pageModes    = try c.decodeIfPresent([String].self, forKey: .pageModes) ?? []
+        pageSkewAngles = try c.decodeIfPresent([Double].self, forKey: .pageSkewAngles) ?? []
     }
 }
 

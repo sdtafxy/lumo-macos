@@ -496,6 +496,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// 也一并关掉——必须在 `applicationWillFinishLaunching` 里设，晚了 AppKit 已经读过了。
     func applicationWillFinishLaunching(_ notification: Notification) {
         UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
+
+        // 「不记住窗口大小」必须在**窗口被创建之前**生效，所以放在这里：
+        // SwiftUI 的 Window 场景会在创建窗口时按保存的 frame 恢复一次，
+        // 晚了就来不及了（窗口会先在旧位置出现一下）。
+        let remember = UserDefaults.standard
+            .object(forKey: LumoPreferenceKeys.rememberWindowSize) as? Bool ?? true
+        if !remember { WindowConfigurator.discardSavedWindowFrame() }
     }
 
     /// 再确认一次结果：起来之后如果**一个窗口都没有**，主动开一个。

@@ -7,10 +7,24 @@
 <p align="center"><em>扫描件，一键焕新。</em></p>
 
 <p align="center">
-  <a href="https://github.com/sdtafxy/lumo-macos/actions/workflows/ci.yml"><img src="https://github.com/sdtafxy/lumo-macos/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/sdtafxy/lumo-macos/releases/latest"><img src="https://img.shields.io/github/v/release/sdtafxy/lumo-macos" alt="Release"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>
-  <img src="https://img.shields.io/badge/macOS-13%2B-blue" alt="macOS 13+">
+  <a href="https://github.com/sdtafxy/lumo-macos/releases/latest"><img src="https://img.shields.io/github/v/release/sdtafxy/lumo-macos?style=for-the-badge&color=14B8A6&label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC" alt="最新版本"></a>
+  <a href="https://github.com/sdtafxy/lumo-macos/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/sdtafxy/lumo-macos/ci.yml?style=for-the-badge&label=CI" alt="CI"></a>
+  <a href="https://github.com/sdtafxy/lumo-macos/releases"><img src="https://img.shields.io/github/downloads/sdtafxy/lumo-macos/total?style=for-the-badge&color=14B8A6" alt="下载量"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-3DA639?style=for-the-badge" alt="License: MIT"></a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/macOS-13%2B-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS 13+">
+  <img src="https://img.shields.io/badge/Swift-5.9%2B-F05138?style=for-the-badge&logo=swift&logoColor=white" alt="Swift 5.9+">
+  <img src="https://img.shields.io/badge/SwiftUI-%E5%8E%9F%E7%94%9F-1D9E75?style=for-the-badge" alt="SwiftUI">
+  <img src="https://img.shields.io/badge/%E7%AC%AC%E4%B8%89%E6%96%B9%E4%BE%9D%E8%B5%96-0-14B8A6?style=for-the-badge" alt="零第三方依赖">
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/PDF-%E5%A2%9E%E5%BC%BA%20%7C%20%E5%8E%8B%E7%BC%A9-B45309?style=for-the-badge" alt="PDF 增强与压缩">
+  <img src="https://img.shields.io/badge/OCR-Vision-0F6E56?style=for-the-badge" alt="Vision OCR">
+  <img src="https://img.shields.io/badge/%E4%B8%AD%20%2F%20%E8%8B%B1-%E5%8F%8C%E8%AF%AD-1D9E75?style=for-the-badge" alt="中英双语">
+  <img src="https://img.shields.io/badge/%E5%85%A8%E7%A8%8B%E6%9C%AC%E6%9C%BA-%E4%B8%8D%E4%B8%8A%E4%BC%A0-14B8A6?style=for-the-badge" alt="全程本机">
 </p>
 
 把一个又大又灰的扫描 PDF 拖进来，得到一份**看着干净、文字可搜、体积小得多**的 PDF。全程在本机完成。

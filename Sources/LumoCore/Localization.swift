@@ -126,6 +126,7 @@ public enum LumoText {
             "Page %@ is already clean — the background strength is still applied as set, "
             + "but these pages may show no visible change",
         "处理 %@ 页": "Processed %@ page(s)",
+        "处理分辨率 %@ dpi": "Processing at %@ dpi",
         "增强模式：%@": "Enhance mode: %@",
         "自动裁边 + 透视校正": "Auto crop + perspective correction",
         "纠偏": "Deskew",
@@ -151,13 +152,18 @@ public enum LumoText {
             "Monochrome document → Black & White (local adaptive binarisation: sharpest text, smallest file)",
         "灰阶文档 → 自动增强（逐页判断：文字页走黑白，含图页保层次）":
             "Greyscale document → Auto (decided per page: text pages go monochrome, image pages keep their tones)",
-        "检测到倾斜 %.1f° → 启用纠偏": "Skew of %.1f° detected → deskew enabled",
         "背景明暗不匀 %.0f%% → 启用背景去除":
             "Background unevenness of %.0f%% → background removal enabled",
         "疑似半调网纹 → 启用去网纹": "Halftone screen suspected → descreen enabled",
         "轻度锐化以还原文字边缘": "Light sharpening to restore text edges",
         "彩色文档 → 自适应压缩（文字页转单色 CCITT，插图页走 JPEG）":
             "Colour document → adaptive compression (text pages to monochrome CCITT, image pages to JPEG)",
+        "第 %@ 页有倾斜（最大 %.1f°）→ 启用纠偏":
+            "Page %@ skewed (worst %.1f°) → auto-straighten enabled",
+        "%@ 页倾斜（最大 %.1f°）→ 启用纠偏":
+            "%@ pages skewed (worst %.1f°) → auto-straighten enabled",
+        "无损 JPEG2000 不可用，已改用无损 Flate":
+            "Lossless JPEG 2000 is unavailable; fell back to lossless Flate",
         "灰阶文档 → 自适应压缩（JPEG / CCITT）":
             "Greyscale document → adaptive compression (JPEG / CCITT)",
         "单色文档 → CCITT 组4 极限压缩":

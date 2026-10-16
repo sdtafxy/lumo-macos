@@ -5,7 +5,14 @@ import Foundation
 public enum Workflow {
     public static func recommend(_ a: Analysis) -> Recommendation {
         var notes: [String] = []
-        let skew = abs(a.skewAngle)
+        // 超过这个角度就该纠偏。0.3° 是"肉眼看得出"的下限：
+        // A4 页面上 0.3° 对应横向 1.3 mm 的落差，几行文字就能看出来。
+        // 原来是 1.0°——而示例件第 1 页的 0.9° 明明看得出来，却因为没到阈值被放过。
+        let skewThreshold = 0.3
+        let worstSkew = abs(a.skewAngle)
+        let skewPages = a.pageSkewAngles.enumerated()
+            .filter { abs($0.element) > skewThreshold }
+            .map { $0.offset + 1 }
         let noise = a.noiseLevel
         let uneven = a.bgUnevenness
         let color = a.colorMode
@@ -33,7 +40,7 @@ public enum Workflow {
         // 取两者里更需要清理的那个——用户拿到滑块时起点就是接近合适的，不用自己试。
         let strength = bgStrengthSuggestion(uneven: uneven, paperWhite: a.paperWhite)
         let enhance = EnhanceSpec(preset: preset.rawValue,
-                                  deskew: skew > 1.0,
+                                  deskew: worstSkew > skewThreshold,
                                   bgRemove: needBG,
                                   descreen: noise > 0.5,
                                   // 黑白档不需要锐化：二值化的输出只有 0 和 255，
@@ -49,7 +56,15 @@ public enum Workflow {
         default:
             notes.append(T("灰阶文档 → 自动增强（逐页判断：文字页走黑白，含图页保层次）"))
         }
-        if skew > 1.0 { notes.append(String(format: T("检测到倾斜 %.1f° → 启用纠偏"), skew)) }
+        if worstSkew > skewThreshold {
+            if skewPages.count <= 3 {
+                notes.append(String(format: T("第 %@ 页有倾斜（最大 %.1f°）→ 启用纠偏"),
+                                    skewPages.map(String.init).joined(separator: "、"), worstSkew))
+            } else {
+                notes.append(String(format: T("%@ 页倾斜（最大 %.1f°）→ 启用纠偏"),
+                                    String(skewPages.count), worstSkew))
+            }
+        }
         if needBG {
             notes.append(String(format: T("背景明暗不匀 %.0f%% → 启用背景去除"), uneven * 100))
         }

@@ -38,6 +38,138 @@ struct WorkArea: View {
     }
 }
 
+// MARK: - 对比方式
+
+private enum CompareMode: Hashable {
+    case sideBySide, curtain
+}
+
+/// 「窗帘」对比：**单页显示**，中间一根可拖动的竖线，左边是原图、右边是处理后。
+///
+/// 为什么值得单做一种：并排看的是"两张图"，靠眼睛来回扫；而"同一处到底改成了什么样"
+/// 这件事，只有把两层叠在同一个位置上才看得准——尤其是渐变的背景和很细的文字边缘。
+///
+/// 实现要点全在一个地方：**两层必须被画在完全相同的矩形里**。
+/// 所以先把"图片按 fit 之后真正占的那块矩形"算出来，再把裁剪、分隔线、拖动手势
+/// 全部挂到那块矩形上。否则图片有留白时，竖线会和图层错位。
+private struct CurtainCompare: View {
+    let before: NSImage?
+    let after: NSImage?
+    let busy: Bool
+    let captionBefore: String
+    let captionAfter: String
+
+    /// 竖线位置（0~1，相对图片宽度）
+    @State private var fraction: CGFloat = 0.5
+    @State private var dragging = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        GeometryReader { outer in
+            let target = fittedSize(in: outer.size)
+            ZStack(alignment: .leading) {
+                // 底层：处理后（整张，作为"右边"的部分）
+                layer(after)
+                    .frame(width: target.width, height: target.height)
+
+                // 上层：原图，只露出竖线左边那一条
+                layer(before)
+                    .frame(width: target.width, height: target.height)
+                    .mask(alignment: .leading) {
+                        Rectangle().frame(width: max(0, target.width * fraction))
+                    }
+
+                // 分隔线与手柄
+                divider(height: target.height)
+                    .offset(x: target.width * fraction - 1)
+
+                // 两侧的说明：贴在图片内左上 / 右上，随竖线隐现
+                captionChip(captionBefore, systemImage: "square.lefthalf.filled")
+                    .opacity(fraction > 0.14 ? 1 : 0)
+                    .padding(10)
+                    .frame(width: target.width, height: target.height, alignment: .topLeading)
+                captionChip(captionAfter, systemImage: "wand.and.stars")
+                    .opacity(fraction < 0.86 ? 1 : 0)
+                    .padding(10)
+                    .frame(width: target.width, height: target.height, alignment: .topTrailing)
+            }
+            .frame(width: target.width, height: target.height)
+            .clipShape(RoundedRectangle(cornerRadius: LumoDesign.radiusCard, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: LumoDesign.radiusCard, style: .continuous)
+                .strokeBorder(LumoDesign.hairline))
+            .shadow(color: .black.opacity(0.10), radius: 14, y: 4)
+            // 整块都能拖：比"只能抓住那根 2pt 的线"好用一个量级
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { v in
+                        dragging = true
+                        let f = v.location.x / max(1, target.width)
+                        fraction = min(1, max(0, f))
+                    }
+                    .onEnded { _ in dragging = false }
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .overlay(alignment: .bottom) {
+                if busy { ProgressView().controlSize(.small).padding(.bottom, 12) }
+            }
+        }
+    }
+
+    @ViewBuilder private func layer(_ img: NSImage?) -> some View {
+        if let img {
+            Image(nsImage: img)
+                .resizable()
+                .interpolation(.high)
+                .aspectRatio(contentMode: .fit)
+        } else {
+            ZStack {
+                LumoDesign.panelAlt
+                Text(T("正在生成预览…")).font(LumoDesign.font(12))
+                    .foregroundColor(LumoDesign.muted)
+            }
+        }
+    }
+
+    private func divider(height: CGFloat) -> some View {
+        ZStack {
+            Rectangle().fill(.white).frame(width: 2).shadow(color: .black.opacity(0.35), radius: 2)
+            // 手柄：拖动时放大一点，给一点手感反馈
+            Image(systemName: "arrow.left.and.right")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(.white)
+                .frame(width: 26, height: 26)
+                .background(Circle().fill(LumoDesign.accent))
+                .overlay(Circle().strokeBorder(.white.opacity(0.9), lineWidth: 1.5))
+                .scaleEffect(dragging ? 1.12 : 1)
+                .animation(LumoMotion.animation(0.12, reduceMotion: reduceMotion), value: dragging)
+        }
+        .frame(height: height)
+    }
+
+    private func captionChip(_ text: String, systemImage: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: systemImage).font(.system(size: 9, weight: .semibold))
+            Text(text).font(LumoDesign.font(10.5, weight: .medium))
+        }
+        .foregroundColor(.white)
+        .padding(.horizontal, 7).padding(.vertical, 3)
+        .background(Capsule().fill(.black.opacity(0.45)))
+        .allowsHitTesting(false)
+    }
+
+    /// 图片按 fit 之后真正占的矩形尺寸。
+    /// 拿不到尺寸时退回容器本身（不会错位，只是竖线可能落在留白上）。
+    private func fittedSize(in container: CGSize) -> CGSize {
+        guard let ref = after ?? before, ref.size.height > 0, container.height > 0 else { return container }
+        let ar = ref.size.width / ref.size.height
+        var w = container.width
+        var h = w / ar
+        if h > container.height { h = container.height; w = h * ar }
+        return CGSize(width: max(1, w), height: max(1, h))
+    }
+}
+
 // MARK: - 预览主区
 
 /// 预览：同一页、同一位置的"处理前 → 处理后"。
@@ -56,6 +188,7 @@ struct PreviewStage: View {
 
     @State private var sliderValue: Double = 1
     @State private var pageField: String = "1"
+    @State private var compareMode: CompareMode = .sideBySide
     @FocusState private var pageFieldFocused: Bool
 
     private var pageCount: Int { max(1, state.report?.analysis.pageCount ?? 1) }
@@ -80,12 +213,23 @@ struct PreviewStage: View {
             .padding(.horizontal, LumoDesign.padWindow)
             .padding(.bottom, state.previewNote == nil && state.previewHint == nil ? 0 : LumoDesign.gapTight)
 
-            HStack(spacing: LumoDesign.gap) {
-                PreviewPane(caption: T("原图"), image: state.previewBefore, busy: state.previewBusy)
-                Image(systemName: "arrow.right")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(LumoDesign.accent)
-                PreviewPane(caption: T("处理后"), image: state.previewAfter, busy: state.previewBusy)
+            Group {
+                switch compareMode {
+                case .sideBySide:
+                    HStack(spacing: LumoDesign.gap) {
+                        PreviewPane(caption: T("原图"), image: state.previewBefore,
+                                    busy: state.previewBusy)
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(LumoDesign.accent)
+                        PreviewPane(caption: T("处理后"), image: state.previewAfter,
+                                    busy: state.previewBusy)
+                    }
+                case .curtain:
+                    CurtainCompare(before: state.previewBefore, after: state.previewAfter,
+                                   busy: state.previewBusy,
+                                   captionBefore: T("原图"), captionAfter: T("处理后"))
+                }
             }
             .padding(.horizontal, LumoDesign.padWindow)
             .padding(.vertical, LumoDesign.gap)
@@ -117,12 +261,32 @@ struct PreviewStage: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: LumoDesign.gapTight) {
             HStack(spacing: LumoDesign.gapTight) {
+                // ★ 「返回首页」放在最左上角、而且是个**看得见的按钮**。
+                //   之前回首页只有底栏一个灰字「清空」，反馈是"退回去的入口不够明显"。
+                //   放在分析页的左上角是它该在的位置——那里本来就是"返回"的常规位置，
+                //   而底栏那个仍然留着（两处入口不冲突：一个显眼、一个顺手）。
+                LumoButton(title: T("返回首页"), icon: "chevron.left", kind: .secondary) {
+                    state.resetToPicker()
+                }
+                .help(T("回到首页，当前文件与结果都会清掉"))
+
                 Text(T("效果预览")).font(LumoDesign.font(13, weight: .semibold))
                     .foregroundColor(LumoDesign.text)
                 if state.previewBusy {
                     ProgressView().controlSize(.mini)
                 }
                 Spacer()
+
+                // 对比方式：并排看整体，窗帘看同一处的细节。
+                Picker("", selection: $compareMode) {
+                    Text(T("并排")).tag(CompareMode.sideBySide)
+                    Text(T("窗帘")).tag(CompareMode.curtain)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 132)
+                .help(T("窗帘：单页显示，拖动中间的竖线比较同一处"))
+
                 LumoButton(title: state.previewAfter == nil ? T("生成预览") : T("刷新预览"),
                            icon: "arrow.clockwise", kind: .secondary,
                            disabled: state.previewBusy || state.fileURL == nil) {
@@ -363,12 +527,14 @@ struct ParamInspector: View {
                             Spacer()
                         }
                         labeledPicker(T("彩色 / 灰度编码"), selection: $state.colorEncoder,
-                                      options: [("JPEG", "jpeg"), ("JPEG2000", "jp2"), (T("ZIP 无损"), "zip")])
+                                      options: [("JPEG", "jpeg"), ("JPEG2000", "jp2"),
+                                                (T("JPEG2000 无损"), "jp2lossless"),
+                                                (T("ZIP 无损"), "zip")])
                         labeledPicker(T("单色编码"), selection: $state.monoEncoder,
                                       options: [(T("CCITT 组4"), "ccitt"), (T("ZIP 无损"), "zip")])
                         // 给"该选哪个"一个依据。这不是在解释实现，而是用户真正要做的决定：
                         // 三个选项都真实可用，但实测差距很大（见 `lumo-cli encbench`）。
-                        Text(T("实测：同一保真度下 JPEG 的体积约为 JPEG2000 的一半；单色页用 CCITT G4 最小。"))
+                        Text(T("实测：同保真度下 JPEG 约为 JPEG2000 的一半，单色页 G4 最小；归档选无损档（无损 JPEG2000 约为无损 Flate 的一半）。"))
                             .font(LumoDesign.font(10.5)).foregroundColor(LumoDesign.faint)
                             .fixedSize(horizontal: false, vertical: true)
                         VStack(alignment: .leading, spacing: 4) {
@@ -471,7 +637,10 @@ struct ReportSection: View {
                     HStack(spacing: 6) {
                         metric(T("色彩"), a.colorModeText)
                         metric(T("分辨率"), "\(a.estimatedDpi)")
-                        metric(T("倾斜"), String(format: "%.2f°", a.skewAngle))
+                        // 显示"最歪的那一页"，而不是各页的平均——见 Analysis.pageSkewAngles。
+                        // 超过 0.3° 就标成需要处理的样子，别再让它看起来像"没问题"。
+                        metric(T("倾斜"), String(format: "%.2f°", a.skewAngle),
+                               warn: abs(a.skewAngle) > 0.3)
                         metric(T("背景"), a.bgText)
                     }
                     ForEach(r.recommendation.notes, id: \.self) { n in
@@ -488,15 +657,19 @@ struct ReportSection: View {
         }
     }
 
-    private func metric(_ k: String, _ v: String) -> some View {
+    /// `warn` 用来把"需要处理的指标"显出来。
+    /// 倾斜这一格尤其需要：它以前显示的是各页平均值，一个歪的页面会被平均成 0.03°，
+    /// 看上去像"没问题"，而实际上第 1 页肉眼就看得出歪。
+    private func metric(_ k: String, _ v: String, warn: Bool = false) -> some View {
         VStack(spacing: 1) {
             Text(v).font(LumoDesign.font(13, weight: .semibold))
-                .foregroundColor(LumoDesign.text).lineLimit(1)
+                .foregroundColor(warn ? LumoDesign.warn : LumoDesign.text).lineLimit(1)
             Text(k).font(LumoDesign.font(10)).foregroundColor(LumoDesign.faint)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 6)
-        .background(RoundedRectangle(cornerRadius: LumoDesign.radiusSmall).fill(LumoDesign.panelAlt))
+        .background(RoundedRectangle(cornerRadius: LumoDesign.radiusSmall)
+            .fill(warn ? LumoDesign.warnSoft : LumoDesign.panelAlt))
     }
 }
 
