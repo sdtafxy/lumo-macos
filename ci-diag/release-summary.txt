@@ -1,0 +1,60 @@
+=== 发版 v0.1.0 ===
+date:      2026-10-16T16:10:40Z
+status:    success
+tag:       v0.1.0
+commit:    9aa5aabeea82a11e83483db60514311e5fa82bf8
+
+--- 各步骤结论（失败时靠这段定位是哪一步挂的）---
+装图标依赖:   success
+装文档依赖:   success
+图标自检:     success
+设计文档:     success
+编译:         success
+自检:         success
+打包:         success
+更新包zip:    success
+DMG:          success
+Release正文:  success
+发布:         success
+
+--- DMG ---
+-rw-r--r--@ 1 runner  staff   2.6M Oct 16 16:10 Lumo.dmg
+ab808185e455d13d1d511113ed965c960a6c56eafad9c1bf7ee7d2a84700c90a  Lumo.dmg
+
+--- 更新包（更新器真正会下载的东西）---
+ls: dist/Lumo-*.zip.ed25519: No such file or directory
+-rw-r--r--  1 runner  staff   2.2M Oct 16 16:10 dist/Lumo-0.1.0.zip
+-rw-r--r--  1 runner  staff    81B Oct 16 16:10 dist/Lumo-0.1.0.zip.sha256
+855eca9ac813e143f992e694c7253b690f10aedc23be3d25fa3eb83ab09d4f63  Lumo-0.1.0.zip
+
+--- make_zip 日志尾部 ---
+==> 打包 dist/Lumo-0.1.0.zip
+==> 自查通过：zip 顶层是 Lumo.app，版本 0.1.0
+==> 计算 SHA-256
+855eca9ac813e143f992e694c7253b690f10aedc23be3d25fa3eb83ab09d4f63  Lumo-0.1.0.zip
+
+==> 未签名（没有 LUMO_UPDATE_SIGNING_KEY，也没有 .update-key）
+    客户端会如实把校验级别标成「SHA-256 完整性」，不会假装验过来源。
+    要开启验签：swiftc -O Scripts/sign_update.swift -o /tmp/su && /tmp/su generate
+
+产出：
+-rw-r--r--  1 runner  staff   2.2M Oct 16 16:10 dist/Lumo-0.1.0.zip
+-rw-r--r--  1 runner  staff    81B Oct 16 16:10 dist/Lumo-0.1.0.zip.sha256
+
+--- 包内版本号（这是用户实际看到的那一个）---
+0.1.0
+1
+
+--- app 结构 ---
+dist/Lumo.app
+dist/Lumo.app/Contents
+dist/Lumo.app/Contents/_CodeSignature
+dist/Lumo.app/Contents/_CodeSignature/CodeResources
+dist/Lumo.app/Contents/MacOS
+dist/Lumo.app/Contents/MacOS/Lumo
+dist/Lumo.app/Contents/Resources
+dist/Lumo.app/Contents/Resources/示例扫描件.pdf
+dist/Lumo.app/Contents/Resources/Lumo.icns
+dist/Lumo.app/Contents/Resources/Lumo-设计文档.pdf
+dist/Lumo.app/Contents/Info.plist
+dist/Lumo.app/Contents/PkgInfo
