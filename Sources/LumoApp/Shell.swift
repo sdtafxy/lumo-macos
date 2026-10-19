@@ -36,7 +36,7 @@ struct WindowConfigurator: NSViewRepresentable {
         // ★ 窗口位置/大小**只留一套机制**：SwiftUI 自己的场景自动保存。
         //
         // 这里曾经是"我们也设一个 setFrameAutosaveName"，结果是两套机制打架，
-        // 表现为用户反馈的那句「每次退出再打开，窗口像突然从某个位置闪现到另一个位置」。
+        // 表现为「每次退出再打开，窗口先出现在一处、再跳到上次的位置」。
         // 实测（高帧率采样窗口 bounds）：窗口先在 (470,167) 出现，36 ms 后跳到 (120,90)。
         // 根因：SwiftUI 的 Window 场景**在创建窗口时**就按它自己保存的 frame 恢复了一次
         // （键名形如 `NSWindow Frame SwiftUI.SubscriptionView…-AppWindow-1`），

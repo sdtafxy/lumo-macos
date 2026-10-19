@@ -59,7 +59,7 @@ jobs:
           python3 Scripts/make_icon.py
           python3 Scripts/make_icon.py --verify
       # 设计文档有两处拷贝（HTML 源 + 内置 PDF），以前 PDF 是手工导出的，
-      # 于是它必然会忘——用户实测反馈的第 5 条就是这么来的。
+      # 于是它必然会忘。
       # 这里断言两者内容一致：改了 HTML 却忘了跑 make_design_doc.py，当场红。
       - name: 设计文档与内置 PDF 必须一致
         id: designdoc

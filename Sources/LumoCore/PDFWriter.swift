@@ -96,7 +96,7 @@ public enum PDFWriter {
     // 虽然 OutputPage 不持有位图，但循环里 PDFReader.render / Enhance.apply
     // 产生的 CoreGraphics 对象受 autorelease 管理，不设池就迟迟不回收；
     // 再加上"全部页攒到最后"这个结构，几 MB 的源文件、几十页，
-    // 内存轻松到几个 GB——这正是用户反馈的第 4 条。
+    // 内存轻松到几个 GB。
     //
     // 流式之后：处理完一页立刻写进输出文件并释放该页数据，
     // 峰值只跟"正在处理的那一两页"有关，与总页数无关。

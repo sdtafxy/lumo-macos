@@ -831,7 +831,7 @@ func selftest() -> Int32 {
 
         // 1) 判据：这种页必须被认定为"需要清理"。
         //    旧门槛只看 backgroundUnevenness，这页不匀度很低，会被直接跳过——
-        //    而它恰恰就是用户说的"增强完了背景还留着"。
+        //    而它正是"增强完了背景还留着"的那类页。
         check(Enhance.needsBackgroundClean(grayPage),
               "均匀灰底页被判定为需要清理（纸白 \(Int(Enhance.paperLevel(grayPage))), 不匀 \(String(format: "%.3f", Analyzer.backgroundUnevenness(grayPage)))）")
 
@@ -1977,7 +1977,7 @@ func pageStats(_ img: CGImage) -> (mid: Double, ink: Double, contrast: Double) {
 /// 底灰：非文字区域的**白电平**（亮端分位点）。
 ///
 /// 为什么要单独做一个 demo 指标、而不是直接用「对比度」或「均值」：
-/// 用户抱怨的「背景还留着」说的是**那层灰还在**，是背景的绝对亮度问题，
+/// 「背景还留着」说的是**那层灰还在**，是背景的绝对亮度问题，
 /// 不是反差问题。
 ///
 /// 这里踩过一次坑，记下来免得再犯：最初实现取的是"中位数以上像素的均值"，
@@ -2162,7 +2162,7 @@ func cmdDemo(_ args: [String]) -> Int32 {
                 let st = pageStats(out)
                 let wrote = write(out, String(format: "p%d-%@.jpg", i + 1, tag))
                 // 底灰（背景区域的平均灰度）单独打出来：这是"画面干不干净"
-                // 最直接的量化指标，比"对比度"更贴用户的那句"背景还留着"。
+                // 最直接的量化指标，比"对比度"更贴近"背景还留着"这个观感。
                 let bg = bgLevel(out)
                 print(String(format: "  · 第%d页 中间调 %.1f%% 墨水率 %.2f%% 对比度 %.0f 底灰 %.1f (纸白 %.0f) → %@",
                              i + 1, st.mid * 100, st.ink * 100, st.contrast,

@@ -383,7 +383,7 @@ struct LumoButton: View {
 ///
 /// 与 `LumoIconButton` 的区别：那个是"融入背景"的次级图标（列表行内动作），
 /// 这个是顶栏上的常驻控件，**必须一眼看出可以点**——所以有底色、有描边、
-/// 有 hover 高亮。用户反馈"点它没反应、毫无作用"里，有一半是观感问题：
+/// 有 hover 高亮。"点了没反应"的反馈里有一半是观感问题：
 /// 一个没有边界的灰色图标，看起来就像个装饰。
 struct LumoCircleButton: View {
     let icon: String
